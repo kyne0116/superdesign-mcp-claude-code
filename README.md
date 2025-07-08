@@ -39,7 +39,7 @@ Example `~/.claude-code/mcp-settings.json`:
   "mcpServers": {
     "superdesign": {
       "command": "node",
-      "args": ["/Users/jongrant/superdesign/dist/index.js"],
+      "args": ["/path/to/superdesign/dist/index.js"],
       "env": {}
     }
   }
