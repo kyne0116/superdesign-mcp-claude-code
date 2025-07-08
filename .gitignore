@@ -1,0 +1,23 @@
+# Hidden superdesign folder (old location)
+.superdesign/
+
+# CLAUDE.md file
+CLAUDE.md
+
+# Dependencies
+node_modules/
+
+# MacOS
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor directories
+.vscode/
+.idea/
