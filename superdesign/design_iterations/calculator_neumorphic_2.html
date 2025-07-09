@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neumorphic Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .neumorphic {
+            background: #e6e7ee;
+            box-shadow: 9px 9px 16px #a3a3a3, -9px -9px 16px #ffffff;
+        }
+        
+        .neumorphic-inset {
+            background: #e6e7ee;
+            box-shadow: inset 6px 6px 12px #a3a3a3, inset -6px -6px 12px #ffffff;
+        }
+        
+        .neumorphic-btn {
+            background: #e6e7ee;
+            box-shadow: 5px 5px 10px #a3a3a3, -5px -5px 10px #ffffff;
+            transition: all 0.15s ease;
+        }
+        
+        .neumorphic-btn:active {
+            box-shadow: inset 3px 3px 6px #a3a3a3, inset -3px -3px 6px #ffffff;
+            transform: scale(0.98);
+        }
+        
+        .neumorphic-btn:hover {
+            box-shadow: 7px 7px 14px #a3a3a3, -7px -7px 14px #ffffff;
+        }
+        
+        .operator-btn {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 5px 5px 10px #a3a3a3, -5px -5px 10px #ffffff;
+        }
+        
+        .operator-btn:hover {
+            box-shadow: 7px 7px 14px #a3a3a3, -7px -7px 14px #ffffff;
+        }
+        
+        .operator-btn:active {
+            box-shadow: inset 3px 3px 6px rgba(102, 126, 234, 0.3), inset -3px -3px 6px rgba(118, 75, 162, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-200 min-h-screen flex items-center justify-center p-4" style="background: #e6e7ee;">
+    <div class="w-full max-w-sm">
+        <!-- Calculator Container -->
+        <div class="neumorphic rounded-3xl p-8">
+            <!-- Display -->
+            <div class="mb-8">
+                <div class="neumorphic-inset rounded-2xl p-6 text-right">
+                    <div class="text-gray-500 text-sm mb-1" id="expression">0</div>
+                    <div class="text-3xl font-light text-gray-800" id="display">0</div>
+                </div>
+            </div>
+            
+            <!-- Button Grid -->
+            <div class="grid grid-cols-4 gap-4">
+                <!-- Row 1 -->
+                <button class="neumorphic-btn text-gray-700 p-4 rounded-xl text-lg font-medium" onclick="clearAll()">C</button>
+                <button class="neumorphic-btn text-gray-700 p-4 rounded-xl text-lg font-medium" onclick="deleteLast()">⌫</button>
+                <button class="neumorphic-btn text-gray-700 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('%')">%</button>
+                <button class="operator-btn p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('/')">÷</button>
+                
+                <!-- Row 2 -->
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('7')">7</button>
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('8')">8</button>
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('9')">9</button>
+                <button class="operator-btn p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('*')">×</button>
+                
+                <!-- Row 3 -->
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('4')">4</button>
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('5')">5</button>
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('6')">6</button>
+                <button class="operator-btn p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('-')">−</button>
+                
+                <!-- Row 4 -->
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('1')">1</button>
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('2')">2</button>
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('3')">3</button>
+                <button class="operator-btn p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('+')">+</button>
+                
+                <!-- Row 5 -->
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium col-span-2" onclick="appendToDisplay('0')">0</button>
+                <button class="neumorphic-btn text-gray-800 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('.')">.</button>
+                <button class="operator-btn p-4 rounded-xl text-lg font-medium" onclick="calculate()">=</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let display = document.getElementById('display');
+        let expression = document.getElementById('expression');
+        let currentInput = '0';
+        let expressionStr = '';
+
+        function updateDisplay() {
+            display.textContent = currentInput;
+            expression.textContent = expressionStr || '0';
+        }
+
+        function appendToDisplay(value) {
+            if (currentInput === '0' && value !== '.') {
+                currentInput = value;
+            } else {
+                currentInput += value;
+            }
+            expressionStr = currentInput;
+            updateDisplay();
+        }
+
+        function clearAll() {
+            currentInput = '0';
+            expressionStr = '';
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            if (currentInput.length > 1) {
+                currentInput = currentInput.slice(0, -1);
+                expressionStr = currentInput;
+            } else {
+                currentInput = '0';
+                expressionStr = '';
+            }
+            updateDisplay();
+        }
+
+        function calculate() {
+            try {
+                let result = eval(currentInput.replace('×', '*').replace('÷', '/').replace('−', '-'));
+                currentInput = result.toString();
+                expressionStr = '';
+                updateDisplay();
+            } catch (error) {
+                currentInput = 'Error';
+                updateDisplay();
+            }
+        }
+    </script>
+</body>
+</html>

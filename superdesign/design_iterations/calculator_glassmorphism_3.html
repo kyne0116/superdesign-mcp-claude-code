@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glassmorphism Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .glass-display {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.15s ease;
+        }
+        
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .glass-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .operator-glass {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .operator-glass:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .clear-btn {
+            background: rgba(255, 99, 99, 0.2);
+            border: 1px solid rgba(255, 99, 99, 0.3);
+        }
+        
+        .clear-btn:hover {
+            background: rgba(255, 99, 99, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm">
+        <!-- Calculator Container -->
+        <div class="glass rounded-3xl p-8 shadow-2xl">
+            <!-- Display -->
+            <div class="mb-8">
+                <div class="glass-display rounded-2xl p-6 text-right">
+                    <div class="text-white text-opacity-70 text-sm mb-1" id="expression">0</div>
+                    <div class="text-3xl font-light text-white" id="display">0</div>
+                </div>
+            </div>
+            
+            <!-- Button Grid -->
+            <div class="grid grid-cols-4 gap-3">
+                <!-- Row 1 -->
+                <button class="clear-btn text-white p-4 rounded-xl text-lg font-medium" onclick="clearAll()">C</button>
+                <button class="glass-btn text-white text-opacity-90 p-4 rounded-xl text-lg font-medium" onclick="deleteLast()">⌫</button>
+                <button class="glass-btn text-white text-opacity-90 p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('%')">%</button>
+                <button class="operator-glass text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('/')">÷</button>
+                
+                <!-- Row 2 -->
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('7')">7</button>
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('8')">8</button>
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('9')">9</button>
+                <button class="operator-glass text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('*')">×</button>
+                
+                <!-- Row 3 -->
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('4')">4</button>
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('5')">5</button>
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('6')">6</button>
+                <button class="operator-glass text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('-')">−</button>
+                
+                <!-- Row 4 -->
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('1')">1</button>
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('2')">2</button>
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('3')">3</button>
+                <button class="operator-glass text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('+')">+</button>
+                
+                <!-- Row 5 -->
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium col-span-2" onclick="appendToDisplay('0')">0</button>
+                <button class="glass-btn text-white p-4 rounded-xl text-lg font-medium" onclick="appendToDisplay('.')">.</button>
+                <button class="operator-glass text-white p-4 rounded-xl text-lg font-medium font-bold" onclick="calculate()">=</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let display = document.getElementById('display');
+        let expression = document.getElementById('expression');
+        let currentInput = '0';
+        let expressionStr = '';
+
+        function updateDisplay() {
+            display.textContent = currentInput;
+            expression.textContent = expressionStr || '0';
+        }
+
+        function appendToDisplay(value) {
+            if (currentInput === '0' && value !== '.') {
+                currentInput = value;
+            } else {
+                currentInput += value;
+            }
+            expressionStr = currentInput;
+            updateDisplay();
+        }
+
+        function clearAll() {
+            currentInput = '0';
+            expressionStr = '';
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            if (currentInput.length > 1) {
+                currentInput = currentInput.slice(0, -1);
+                expressionStr = currentInput;
+            } else {
+                currentInput = '0';
+                expressionStr = '';
+            }
+            updateDisplay();
+        }
+
+        function calculate() {
+            try {
+                let result = eval(currentInput.replace('×', '*').replace('÷', '/').replace('−', '-'));
+                currentInput = result.toString();
+                expressionStr = '';
+                updateDisplay();
+            } catch (error) {
+                currentInput = 'Error';
+                updateDisplay();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wood-Grain Winamp Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap');
+        
+        .wood-container {
+            background: linear-gradient(135deg, 
+                #8B4513 0%, 
+                #A0522D 25%, 
+                #CD853F 50%, 
+                #D2691E 75%, 
+                #8B4513 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wood-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                rgba(139, 69, 19, 0.1) 0px,
+                rgba(160, 82, 45, 0.3) 10px,
+                rgba(205, 133, 63, 0.2) 20px,
+                rgba(210, 105, 30, 0.1) 30px
+            );
+            pointer-events: none;
+        }
+        
+        .wood-panel {
+            background: linear-gradient(135deg, #654321 0%, #8B4513 100%);
+            border: 3px ridge #A0522D;
+            box-shadow: inset 2px 2px 8px rgba(0,0,0,0.3),
+                        inset -2px -2px 8px rgba(255,255,255,0.1);
+        }
+        
+        .brass-display {
+            background: linear-gradient(135deg, #DAA520 0%, #B8860B 50%, #FFD700 100%);
+            color: #2F1B14;
+            border: 2px inset #DAA520;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+            font-family: 'Merriweather', serif;
+        }
+        
+        .wood-button {
+            background: linear-gradient(135deg, #A0522D 0%, #8B4513 50%, #654321 100%);
+            border: 2px outset #A0522D;
+            color: #F5DEB3;
+            font-family: 'Merriweather', serif;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            transition: all 0.2s ease;
+        }
+        
+        .wood-button:hover {
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #CD853F 100%);
+            transform: translateY(-1px);
+        }
+        
+        .wood-button:active {
+            border: 2px inset #A0522D;
+            transform: translateY(1px);
+        }
+        
+        .brass-knob {
+            background: radial-gradient(circle, #FFD700 0%, #DAA520 50%, #B8860B 100%);
+            border: 2px solid #8B4513;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3),
+                        inset 0 1px 2px rgba(255,255,255,0.3);
+        }
+        
+        .vintage-progress {
+            background: linear-gradient(90deg, #8B4513 0%, #DAA520 100%);
+            border: 1px inset #654321;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        @keyframes vintage-viz {
+            0%, 100% { 
+                height: 15%; 
+                background: linear-gradient(to top, #8B4513 0%, #A0522D 100%);
+            }
+            50% { 
+                height: 85%; 
+                background: linear-gradient(to top, #DAA520 0%, #FFD700 100%);
+            }
+        }
+        
+        .vintage-bar {
+            animation: vintage-viz 1.2s ease-in-out infinite;
+            margin: 0 2px;
+            border-radius: 1px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .eq-vintage {
+            background: linear-gradient(to top, #654321 0%, #8B4513 50%, #DAA520 100%);
+            border: 1px solid #A0522D;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .leather-accent {
+            background: linear-gradient(135deg, #4A4A4A 0%, #2F2F2F 100%);
+            border: 2px ridge #8B4513;
+            color: #F5DEB3;
+        }
+        
+        .vintage-text {
+            color: #F5DEB3;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            font-family: 'Merriweather', serif;
+        }
+        
+        .brass-accent {
+            color: #DAA520;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .wood-texture {
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
+                linear-gradient(90deg, rgba(205, 133, 63, 0.05) 0%, transparent 100%);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-amber-900 to-orange-900 min-h-screen flex items-center justify-center p-4">
+    <div class="wood-container wood-texture rounded-2xl p-8 w-full max-w-lg relative border-4 border-amber-800">
+        <!-- Vintage Header -->
+        <div class="leather-accent p-4 mb-6 rounded-lg flex justify-between items-center">
+            <div class="vintage-text text-xl font-bold">Vintage Music Box</div>
+            <div class="flex gap-2">
+                <div class="brass-knob w-4 h-4 rounded-full"></div>
+                <div class="brass-knob w-4 h-4 rounded-full"></div>
+                <div class="brass-knob w-4 h-4 rounded-full"></div>
+            </div>
+        </div>
+
+        <!-- Brass Display -->
+        <div class="brass-display p-6 mb-6 rounded-lg">
+            <div class="text-lg font-semibold mb-2" id="vintage-track">Classical Symphony No. 9</div>
+            <div class="text-sm opacity-80 mb-3" id="vintage-artist">Ludwig van Beethoven</div>
+            <div class="flex justify-between items-center">
+                <div class="text-base font-mono" id="vintage-time">15:42</div>
+                <div class="flex gap-3 text-xs">
+                    <span class="brass-accent">HIFI</span>
+                    <span class="brass-accent">STEREO</span>
+                    <span class="brass-accent">96K</span>
+                </div>
+            </div>
+            <div class="text-xs mt-2 opacity-70">Philharmonic Orchestra Recording</div>
+        </div>
+
+        <!-- Vintage Visualizer -->
+        <div class="wood-panel p-4 mb-6 rounded-lg">
+            <div class="vintage-text text-sm mb-3 text-center">Audio Spectrum</div>
+            <div class="flex items-end justify-center h-16 bg-gradient-to-b from-amber-900 to-orange-950 rounded p-2">
+                <div class="vintage-bar w-3" style="animation-delay: 0s;"></div>
+                <div class="vintage-bar w-3" style="animation-delay: 0.2s;"></div>
+                <div class="vintage-bar w-3" style="animation-delay: 0.4s;"></div>
+                <div class="vintage-bar w-3" style="animation-delay: 0.6s;"></div>
+                <div class="vintage-bar w-3" style="animation-delay: 0.8s;"></div>
+                <div class="vintage-bar w-3" style="animation-delay: 1.0s;"></div>
+                <div class="vintage-bar w-3" style="animation-delay: 1.2s;"></div>
+                <div class="vintage-bar w-3" style="animation-delay: 1.4s;"></div>
+                <div class="vintage-bar w-3" style="animation-delay: 1.6s;"></div>
+            </div>
+        </div>
+
+        <!-- Vintage Controls -->
+        <div class="grid grid-cols-5 gap-3 mb-6">
+            <button class="wood-button p-3 text-sm font-semibold rounded-lg" onclick="previousTrack()">◀◀</button>
+            <button class="wood-button p-3 text-sm font-semibold rounded-lg brass-accent" onclick="togglePlay()" id="vintage-play">▶</button>
+            <button class="wood-button p-3 text-sm font-semibold rounded-lg" onclick="pauseTrack()">⏸</button>
+            <button class="wood-button p-3 text-sm font-semibold rounded-lg" onclick="stopTrack()">⏹</button>
+            <button class="wood-button p-3 text-sm font-semibold rounded-lg" onclick="nextTrack()">▶▶</button>
+        </div>
+
+        <!-- Progress -->
+        <div class="wood-panel p-3 mb-6 rounded-lg">
+            <div class="vintage-text text-xs mb-2">Movement Progress</div>
+            <div class="bg-amber-900 rounded-full h-3 border border-amber-800">
+                <div class="vintage-progress rounded-full h-full" style="width: 65%"></div>
+            </div>
+        </div>
+
+        <!-- Volume Controls -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="wood-panel p-4 rounded-lg">
+                <div class="vintage-text text-sm mb-2">Volume</div>
+                <div class="bg-amber-900 rounded-full h-3 border border-amber-800">
+                    <div class="vintage-progress rounded-full h-full" style="width: 85%"></div>
+                </div>
+            </div>
+            <div class="wood-panel p-4 rounded-lg">
+                <div class="vintage-text text-sm mb-2">Balance</div>
+                <div class="bg-amber-900 rounded-full h-3 border border-amber-800 relative">
+                    <div class="brass-knob absolute top-0 w-4 h-3 rounded-full" style="left: calc(50% - 8px);"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vintage Equalizer -->
+        <div class="leather-accent p-6 rounded-lg">
+            <div class="vintage-text text-sm mb-4 text-center">Tone Controls</div>
+            <div class="flex justify-center gap-3">
+                <div class="eq-vintage rounded w-4" style="height: 50px;"></div>
+                <div class="eq-vintage rounded w-4" style="height: 65px;"></div>
+                <div class="eq-vintage rounded w-4" style="height: 58px;"></div>
+                <div class="eq-vintage rounded w-4" style="height: 72px;"></div>
+                <div class="eq-vintage rounded w-4" style="height: 62px;"></div>
+                <div class="eq-vintage rounded w-4" style="height: 68px;"></div>
+                <div class="eq-vintage rounded w-4" style="height: 55px;"></div>
+            </div>
+            <div class="flex justify-between vintage-text text-xs mt-3">
+                <span>Bass</span>
+                <span>Low</span>
+                <span>Mid</span>
+                <span>High</span>
+                <span>Treble</span>
+                <span>Pres</span>
+                <span>Gain</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isPlaying = false;
+        let currentTrack = 1;
+        let currentTime = 942; // 15:42 in seconds
+
+        const vintageTracks = [
+            { title: "Classical Symphony No. 9", artist: "Ludwig van Beethoven", album: "Philharmonic Orchestra Recording" },
+            { title: "Moonlight Sonata", artist: "Frédéric Chopin", album: "Piano Classics Collection" },
+            { title: "The Four Seasons - Spring", artist: "Antonio Vivaldi", album: "Baroque Masterpieces" },
+            { title: "Clair de Lune", artist: "Claude Debussy", album: "Impressionist Piano Works" }
+        ];
+
+        function updateVintageDisplay() {
+            const minutes = Math.floor(currentTime / 60);
+            const seconds = currentTime % 60;
+            document.getElementById('vintage-time').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            const track = vintageTracks[currentTrack - 1];
+            document.getElementById('vintage-track').textContent = track.title;
+            document.getElementById('vintage-artist').textContent = track.artist;
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('vintage-play');
+            btn.textContent = isPlaying ? '⏸' : '▶';
+            
+            if (isPlaying) {
+                startVintageTimer();
+            } else {
+                stopVintageTimer();
+            }
+        }
+
+        function pauseTrack() {
+            isPlaying = false;
+            document.getElementById('vintage-play').textContent = '▶';
+            stopVintageTimer();
+        }
+
+        function stopTrack() {
+            isPlaying = false;
+            currentTime = 0;
+            document.getElementById('vintage-play').textContent = '▶';
+            updateVintageDisplay();
+            stopVintageTimer();
+        }
+
+        function nextTrack() {
+            currentTrack = currentTrack < vintageTracks.length ? currentTrack + 1 : 1;
+            currentTime = Math.floor(Math.random() * 600) + 300; // Random classical music length
+            updateVintageDisplay();
+        }
+
+        function previousTrack() {
+            currentTrack = currentTrack > 1 ? currentTrack - 1 : vintageTracks.length;
+            currentTime = Math.floor(Math.random() * 600) + 300;
+            updateVintageDisplay();
+        }
+
+        let vintageTimer;
+        function startVintageTimer() {
+            vintageTimer = setInterval(() => {
+                if (isPlaying) {
+                    currentTime++;
+                    updateVintageDisplay();
+                }
+            }, 1000);
+        }
+
+        function stopVintageTimer() {
+            if (vintageTimer) {
+                clearInterval(vintageTimer);
+            }
+        }
+
+        // Initialize
+        updateVintageDisplay();
+    </script>
+</body>
+</html>

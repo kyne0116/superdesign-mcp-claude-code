@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superdesign Gallery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1a202c;
+            --text-secondary: #718096;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --bg-card: #2d3748;
+            --text-primary: #f7fafc;
+            --text-secondary: #a0aec0;
+            --border-color: #4a5568;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-hover: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+        }
+        
+        body {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        
+        .header {
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .header-content h1 {
+            font-size: 2.5rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        
+        .header-content p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 400;
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .refresh-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .auto-refresh-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .auto-refresh-toggle input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--text-primary);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary:disabled:hover {
+            transform: none;
+        }
+        
+        .theme-toggle {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-1px);
+        }
+        
+        .updated-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 12px;
+            height: 12px;
+            background: #48bb78;
+            border-radius: 50%;
+            border: 2px solid var(--bg-card);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .refresh-indicator {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 24px;
+            max-width: 1400px;
+        }
+        
+        .design-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .design-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .design-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .design-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .design-title h3 {
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 500;
+            font-family: inherit;
+        }
+        
+        .design-type {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 400;
+            font-family: inherit;
+        }
+        
+        .design-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+        
+        .design-size, .design-date {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-family: inherit;
+        }
+        
+        .design-date {
+            opacity: 0.8;
+        }
+        
+        .design-preview {
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .design-preview iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            transform: scale(0.5);
+            transform-origin: top left;
+            width: 200%;
+            height: 200%;
+        }
+        
+        .design-preview .svg-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: var(--bg-primary);
+        }
+        
+        .design-actions {
+            padding: 16px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .btn-primary:hover {
+            background: #3182ce;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+        
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .btn-danger:hover {
+            background: #c53030;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .gallery-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .design-preview {
+                height: 200px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>superdesign.gallery</h1>
+            <p id="file-count">8 designs found • Fresh MCP Scan</p>
+        </div>
+        <div class="header-controls">
+            <div class="refresh-controls">
+                <button id="refresh-btn" class="btn-secondary" onclick="refreshGallery()">
+                    <span id="refresh-icon">🔄</span>
+                    <span id="refresh-text">Refresh</span>
+                </button>
+                <label class="auto-refresh-toggle">
+                    <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
+                    <span>Auto-refresh</span>
+                </label>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+                <span id="theme-text">Dark</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="gallery-grid">
+        
+      <div class="design-card" data-file="wood_winamp_4.html" data-created="" data-modified="1752010233666">
+        <div class="design-header">
+          <div class="design-title">
+            <h3>Wood Grain Winamp</h3>
+            <span class="design-type">.HTML</span>
+          </div>
+          <div class="design-meta">
+            <span class="design-size">12.7 KB</span>
+            <span class="design-date">Jul 8, 22:30</span>
+          </div>
+        </div>
+        <div class="design-preview">
+          <iframe src="./design_iterations/wood_winamp_4.html" loading="lazy" data-file="wood_winamp_4.html"></iframe>
+        </div>
+        <div class="design-actions">
+          <button onclick="openFullscreen('./design_iterations/wood_winamp_4.html')" class="btn-primary">View Full</button>
+          <button onclick="copyPath('./design_iterations/wood_winamp_4.html')" class="btn-secondary">Copy Path</button>
+          <button onclick="deleteDesign('wood_winamp_4.html')" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    
+      <div class="design-card" data-file="neon_winamp_2.html" data-created="" data-modified="1752010131452">
+        <div class="design-header">
+          <div class="design-title">
+            <h3>Neon Cyber Winamp</h3>
+            <span class="design-type">.HTML</span>
+          </div>
+          <div class="design-meta">
+            <span class="design-size">12.0 KB</span>
+            <span class="design-date">Jul 8, 22:28</span>
+          </div>
+        </div>
+        <div class="design-preview">
+          <iframe src="./design_iterations/neon_winamp_2.html" loading="lazy" data-file="neon_winamp_2.html"></iframe>
+        </div>
+        <div class="design-actions">
+          <button onclick="openFullscreen('./design_iterations/neon_winamp_2.html')" class="btn-primary">View Full</button>
+          <button onclick="copyPath('./design_iterations/neon_winamp_2.html')" class="btn-secondary">Copy Path</button>
+          <button onclick="deleteDesign('neon_winamp_2.html')" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    
+      <div class="design-card" data-file="minimal_winamp_3.html" data-created="" data-modified="1752010179054">
+        <div class="design-header">
+          <div class="design-title">
+            <h3>Minimal Music Player</h3>
+            <span class="design-type">.HTML</span>
+          </div>
+          <div class="design-meta">
+            <span class="design-size">10.4 KB</span>
+            <span class="design-date">Jul 8, 22:29</span>
+          </div>
+        </div>
+        <div class="design-preview">
+          <iframe src="./design_iterations/minimal_winamp_3.html" loading="lazy" data-file="minimal_winamp_3.html"></iframe>
+        </div>
+        <div class="design-actions">
+          <button onclick="openFullscreen('./design_iterations/minimal_winamp_3.html')" class="btn-primary">View Full</button>
+          <button onclick="copyPath('./design_iterations/minimal_winamp_3.html')" class="btn-secondary">Copy Path</button>
+          <button onclick="deleteDesign('minimal_winamp_3.html')" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    
+      <div class="design-card" data-file="classic_winamp_1.html" data-created="" data-modified="1752010077862">
+        <div class="design-header">
+          <div class="design-title">
+            <h3>Classic Winamp Player</h3>
+            <span class="design-type">.HTML</span>
+          </div>
+          <div class="design-meta">
+            <span class="design-size">9.1 KB</span>
+            <span class="design-date">Jul 8, 22:27</span>
+          </div>
+        </div>
+        <div class="design-preview">
+          <iframe src="./design_iterations/classic_winamp_1.html" loading="lazy" data-file="classic_winamp_1.html"></iframe>
+        </div>
+        <div class="design-actions">
+          <button onclick="openFullscreen('./design_iterations/classic_winamp_1.html')" class="btn-primary">View Full</button>
+          <button onclick="copyPath('./design_iterations/classic_winamp_1.html')" class="btn-secondary">Copy Path</button>
+          <button onclick="deleteDesign('classic_winamp_1.html')" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    
+      <div class="design-card" data-file="calculator_retro_4.html" data-created="" data-modified="1752009533660">
+        <div class="design-header">
+          <div class="design-title">
+            <h3>Retro Calculator</h3>
+            <span class="design-type">.HTML</span>
+          </div>
+          <div class="design-meta">
+            <span class="design-size">8.1 KB</span>
+            <span class="design-date">Jul 8, 22:18</span>
+          </div>
+        </div>
+        <div class="design-preview">
+          <iframe src="./design_iterations/calculator_retro_4.html" loading="lazy" data-file="calculator_retro_4.html"></iframe>
+        </div>
+        <div class="design-actions">
+          <button onclick="openFullscreen('./design_iterations/calculator_retro_4.html')" class="btn-primary">View Full</button>
+          <button onclick="copyPath('./design_iterations/calculator_retro_4.html')" class="btn-secondary">Copy Path</button>
+          <button onclick="deleteDesign('calculator_retro_4.html')" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    
+      <div class="design-card" data-file="calculator_neumorphic_2.html" data-created="" data-modified="1752009409190">
+        <div class="design-header">
+          <div class="design-title">
+            <h3>Neumorphic Calculator</h3>
+            <span class="design-type">.HTML</span>
+          </div>
+          <div class="design-meta">
+            <span class="design-size">6.6 KB</span>
+            <span class="design-date">Jul 8, 22:16</span>
+          </div>
+        </div>
+        <div class="design-preview">
+          <iframe src="./design_iterations/calculator_neumorphic_2.html" loading="lazy" data-file="calculator_neumorphic_2.html"></iframe>
+        </div>
+        <div class="design-actions">
+          <button onclick="openFullscreen('./design_iterations/calculator_neumorphic_2.html')" class="btn-primary">View Full</button>
+          <button onclick="copyPath('./design_iterations/calculator_neumorphic_2.html')" class="btn-secondary">Copy Path</button>
+          <button onclick="deleteDesign('calculator_neumorphic_2.html')" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    
+      <div class="design-card" data-file="calculator_minimalist_1.html" data-created="" data-modified="1752009380423">
+        <div class="design-header">
+          <div class="design-title">
+            <h3>Minimalist Calculator</h3>
+            <span class="design-type">.HTML</span>
+          </div>
+          <div class="design-meta">
+            <span class="design-size">6.0 KB</span>
+            <span class="design-date">Jul 8, 22:16</span>
+          </div>
+        </div>
+        <div class="design-preview">
+          <iframe src="./design_iterations/calculator_minimalist_1.html" loading="lazy" data-file="calculator_minimalist_1.html"></iframe>
+        </div>
+        <div class="design-actions">
+          <button onclick="openFullscreen('./design_iterations/calculator_minimalist_1.html')" class="btn-primary">View Full</button>
+          <button onclick="copyPath('./design_iterations/calculator_minimalist_1.html')" class="btn-secondary">Copy Path</button>
+          <button onclick="deleteDesign('calculator_minimalist_1.html')" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    
+      <div class="design-card" data-file="calculator_glassmorphism_3.html" data-created="" data-modified="1752009434734">
+        <div class="design-header">
+          <div class="design-title">
+            <h3>Glassmorphism Calculator</h3>
+            <span class="design-type">.HTML</span>
+          </div>
+          <div class="design-meta">
+            <span class="design-size">6.8 KB</span>
+            <span class="design-date">Jul 8, 22:17</span>
+          </div>
+        </div>
+        <div class="design-preview">
+          <iframe src="./design_iterations/calculator_glassmorphism_3.html" loading="lazy" data-file="calculator_glassmorphism_3.html"></iframe>
+        </div>
+        <div class="design-actions">
+          <button onclick="openFullscreen('./design_iterations/calculator_glassmorphism_3.html')" class="btn-primary">View Full</button>
+          <button onclick="copyPath('./design_iterations/calculator_glassmorphism_3.html')" class="btn-secondary">Copy Path</button>
+          <button onclick="deleteDesign('calculator_glassmorphism_3.html')" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    
+    </div>
+    
+    <script>
+        // Theme management
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        updateThemeButton();
+        
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton();
+        }
+        
+        function updateThemeButton() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            const icon = document.getElementById('theme-icon');
+            const text = document.getElementById('theme-text');
+            
+            if (theme === 'dark') {
+                icon.textContent = '☀️';
+                text.textContent = 'Light';
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Dark';
+            }
+        }
+        
+        function openFullscreen(path) {
+            window.open(path, '_blank');
+        }
+        
+        function copyPath(path) {
+            navigator.clipboard.writeText(path).then(() => {
+                showToast('Path copied to clipboard!', 'success');
+            });
+        }
+        
+        function deleteDesign(fileName) {
+            if (confirm(`Are you sure you want to delete ${fileName}?`)) {
+                showToast('Delete functionality via MCP coming soon!', 'info');
+            }
+        }
+        
+        function showToast(message, type = 'info') {
+            const colors = {
+                success: '#48bb78',
+                error: '#e53e3e',
+                info: '#4299e1',
+                warning: '#ed8936'
+            };
+            
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${colors[type] || colors.info};
+                color: white;
+                padding: 12px 20px;
+                border-radius: 6px;
+                z-index: 1000;
+                font-size: 14px;
+                font-family: inherit;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // File manifest for change detection (MCP Integration)
+        const fileManifest = [
+            {"name":"wood_winamp_4.html","size":13051,"modified":1752010233666,"created":"2025-01-08T22:30:33.666Z"},
+            {"name":"neon_winamp_2.html","size":12307,"modified":1752010131452,"created":"2025-01-08T22:28:51.452Z"},
+            {"name":"minimal_winamp_3.html","size":10650,"modified":1752010179054,"created":"2025-01-08T22:29:39.054Z"},
+            {"name":"classic_winamp_1.html","size":9339,"modified":1752010077862,"created":"2025-01-08T22:27:57.862Z"},
+            {"name":"calculator_retro_4.html","size":8257,"modified":1752009533660,"created":"2025-01-08T22:18:53.660Z"},
+            {"name":"calculator_neumorphic_2.html","size":6733,"modified":1752009409190,"created":"2025-01-08T22:16:49.190Z"},
+            {"name":"calculator_minimalist_1.html","size":6174,"modified":1752009380423,"created":"2025-01-08T22:16:20.423Z"},
+            {"name":"calculator_glassmorphism_3.html","size":6943,"modified":1752009434734,"created":"2025-01-08T22:17:14.734Z"}
+        ];
+        
+        let lastUpdateCheck = Date.now();
+        let autoRefreshInterval;
+        let isRefreshing = false;
+        
+        // MCP-Integrated Smart Refresh System
+        function refreshGallery() {
+            if (isRefreshing) return;
+            
+            isRefreshing = true;
+            const refreshBtn = document.getElementById('refresh-btn');
+            const refreshIcon = document.getElementById('refresh-icon');
+            const refreshText = document.getElementById('refresh-text');
+            
+            // Show loading state
+            refreshBtn.disabled = true;
+            refreshIcon.classList.add('refresh-indicator');
+            refreshText.textContent = 'Refreshing...';
+            
+            // Check for file changes using MCP integration
+            checkForFileChanges()
+                .then(hasChanges => {
+                    if (hasChanges) {
+                        showToast('Changes detected! Reloading gallery...', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showToast('Gallery is up to date', 'info');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error checking for updates', 'error');
+                    console.error('Refresh error:', error);
+                })
+                .finally(() => {
+                    // Reset loading state
+                    isRefreshing = false;
+                    refreshBtn.disabled = false;
+                    refreshIcon.classList.remove('refresh-indicator');
+                    refreshText.textContent = 'Refresh';
+                });
+        }
+        
+        async function checkForFileChanges() {
+            try {
+                const currentFiles = await getCurrentFileStats();
+                let hasChanges = false;
+                
+                // Compare with MCP-generated manifest
+                for (const currentFile of currentFiles) {
+                    const manifestFile = fileManifest.find(f => f.name === currentFile.name);
+                    if (!manifestFile) {
+                        // New file detected
+                        hasChanges = true;
+                        showToast(`New file detected: ${currentFile.name}`, 'info');
+                        break;
+                    }
+                    
+                    // Smart change detection with tolerance
+                    const timeDiff = Math.abs(currentFile.modified - manifestFile.modified);
+                    if (timeDiff > 1000) { // 1 second tolerance for file system delays
+                        markFileAsUpdated(currentFile.name);
+                        hasChanges = true;
+                    }
+                }
+                
+                // Check for deleted files
+                const currentFileNames = new Set(currentFiles.map(f => f.name));
+                for (const manifestFile of fileManifest) {
+                    if (!currentFileNames.has(manifestFile.name)) {
+                        hasChanges = true;
+                        showToast(`File deleted: ${manifestFile.name}`, 'warning');
+                        break;
+                    }
+                }
+                
+                return hasChanges;
+            } catch (error) {
+                console.error('Error checking file changes:', error);
+                return false;
+            }
+        }
+        
+        async function getCurrentFileStats() {
+            const iframes = document.querySelectorAll('iframe[data-file]');
+            const files = [];
+            
+            for (const iframe of iframes) {
+                const fileName = iframe.getAttribute('data-file');
+                if (fileName) {
+                    let lastModified = Date.now();
+                    let estimatedSize = 0;
+                    
+                    try {
+                        // Get file info from iframe document
+                        if (iframe.contentDocument?.lastModified) {
+                            lastModified = new Date(iframe.contentDocument.lastModified).getTime();
+                        }
+                        
+                        // Check if iframe loaded successfully
+                        const iframeLoaded = iframe.contentDocument && 
+                                           iframe.contentDocument.readyState === 'complete';
+                        
+                        if (!iframeLoaded) {
+                            lastModified = 0; // File might be missing
+                        }
+                        
+                        // Estimate file size from content
+                        if (iframe.contentDocument?.documentElement) {
+                            estimatedSize = iframe.contentDocument.documentElement.outerHTML.length;
+                        }
+                        
+                        files.push({
+                            name: fileName,
+                            modified: lastModified,
+                            size: estimatedSize
+                        });
+                    } catch (error) {
+                        // Cross-origin or access issues
+                        files.push({
+                            name: fileName,
+                            modified: Date.now(),
+                            size: 0
+                        });
+                    }
+                }
+            }
+            
+            return files;
+        }
+        
+        function toggleAutoRefresh() {
+            const autoRefreshCheckbox = document.getElementById('auto-refresh');
+            
+            if (autoRefreshCheckbox.checked) {
+                // Start MCP-integrated auto-refresh
+                autoRefreshInterval = setInterval(() => {
+                    if (!isRefreshing) {
+                        checkForFileChanges().then(hasChanges => {
+                            if (hasChanges) {
+                                showToast('Auto-refresh: Changes detected!', 'info');
+                                setTimeout(() => location.reload(), 1000);
+                            }
+                        });
+                    }
+                }, 5000);
+                
+                showToast('MCP Auto-refresh enabled (5s interval)', 'success');
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                showToast('Auto-refresh disabled', 'info');
+            }
+        }
+        
+        function markFileAsUpdated(fileName) {
+            const card = document.querySelector(`[data-file="${fileName}"]`);
+            if (card) {
+                // Add visual update indicator
+                const indicator = document.createElement('div');
+                indicator.className = 'updated-indicator';
+                indicator.title = 'File updated';
+                card.style.position = 'relative';
+                card.appendChild(indicator);
+                
+                // Remove indicator after 5 seconds
+                setTimeout(() => {
+                    indicator.remove();
+                }, 5000);
+                
+                showToast(`File updated: ${fileName}`, 'success');
+            }
+        }
+        
+        // Initialize MCP-integrated gallery
+        document.addEventListener('DOMContentLoaded', () => {
+            // Restore auto-refresh state
+            const autoRefreshEnabled = localStorage.getItem('autoRefresh') === 'true';
+            document.getElementById('auto-refresh').checked = autoRefreshEnabled;
+            if (autoRefreshEnabled) {
+                toggleAutoRefresh();
+            }
+            
+            // Save auto-refresh state changes
+            document.getElementById('auto-refresh').addEventListener('change', () => {
+                localStorage.setItem('autoRefresh', document.getElementById('auto-refresh').checked);
+            });
+            
+            console.log('🎨 Superdesign Gallery - MCP Integration Active');
+            console.log('📂 Monitoring', fileManifest.length, 'design files');
+        });
+        
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 {
   "name": "superdesign-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for Superdesign tools integration with Cursor",
+  "description": "MCP server that wraps Superdesign AI design agent for Claude Code",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

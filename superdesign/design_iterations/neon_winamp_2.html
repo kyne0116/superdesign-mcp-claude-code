@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Winamp Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        body {
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000000 100%);
+        }
+        
+        .neon-container {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            box-shadow: 0 0 50px rgba(255, 0, 255, 0.3),
+                        inset 0 0 30px rgba(0, 255, 255, 0.1);
+            border: 2px solid #ff00ff;
+        }
+        
+        .neon-text {
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .neon-pink {
+            color: #ff00ff;
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff;
+        }
+        
+        .neon-green {
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+        }
+        
+        .lcd-neon {
+            background: linear-gradient(135deg, #000011 0%, #000033 100%);
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5),
+                        inset 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+        
+        .neon-btn {
+            background: linear-gradient(135deg, #2d1b69 0%, #1a0933 100%);
+            border: 2px solid #ff00ff;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .neon-btn:hover {
+            box-shadow: 0 0 25px rgba(255, 0, 255, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .neon-btn:active {
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+            transform: translateY(0);
+        }
+        
+        .cyber-progress {
+            background: linear-gradient(90deg, 
+                #000033 0%, 
+                #ff00ff 25%, 
+                #00ffff  50%, 
+                #ff00ff 75%, 
+                #000033 100%);
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+            animation: cyberpulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes cyberpulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        @keyframes neonviz {
+            0%, 100% { 
+                height: 10%; 
+                background: #00ffff;
+                box-shadow: 0 0 10px #00ffff;
+            }
+            50% { 
+                height: 90%; 
+                background: #ff00ff;
+                box-shadow: 0 0 15px #ff00ff;
+            }
+        }
+        
+        .cyber-viz {
+            animation: neonviz 0.8s ease-in-out infinite;
+            margin: 0 2px;
+            border-radius: 2px;
+        }
+        
+        .eq-cyber {
+            background: linear-gradient(to top, #ff00ff 0%, #00ffff 50%, #ff00ff 100%);
+            border: 1px solid #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        .volume-cyber {
+            background: linear-gradient(to right, #000033 0%, #ff00ff 50%, #00ffff 100%);
+            box-shadow: 0 0 8px rgba(255, 0, 255, 0.5);
+        }
+        
+        .glow-border {
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+        }
+        
+        @keyframes title-glow {
+            0%, 100% { 
+                text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 15px #ff00ff;
+            }
+            50% { 
+                text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+            }
+        }
+        
+        .title-cyber {
+            animation: title-glow 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="neon-container rounded-xl p-6 w-full max-w-lg">
+        <!-- Cyber Title Bar -->
+        <div class="flex justify-between items-center mb-6 glow-border p-3 rounded-lg bg-black">
+            <div class="neon-text text-lg font-bold title-cyber">CYBER-AMP.EXE</div>
+            <div class="flex gap-2">
+                <div class="w-4 h-4 bg-green-500 rounded-full shadow-lg" style="box-shadow: 0 0 10px #00ff00;"></div>
+                <div class="w-4 h-4 bg-yellow-500 rounded-full shadow-lg" style="box-shadow: 0 0 10px #ffff00;"></div>
+                <div class="w-4 h-4 bg-red-500 rounded-full shadow-lg" style="box-shadow: 0 0 10px #ff0000;"></div>
+            </div>
+        </div>
+
+        <!-- Neon LCD Display -->
+        <div class="lcd-neon p-6 mb-6 rounded-lg">
+            <div class="neon-text text-xl mb-3 font-mono" id="cyber-track">TRACK_01.MP3</div>
+            <div class="flex justify-between items-center mb-2">
+                <div class="neon-green text-lg font-mono" id="cyber-time">03:42</div>
+                <div class="flex gap-3">
+                    <div class="neon-pink text-sm">320</div>
+                    <div class="neon-pink text-sm">STEREO</div>
+                    <div class="neon-pink text-sm">48K</div>
+                </div>
+            </div>
+            <div class="neon-pink text-sm opacity-90">SYNTHWAVE_COLLECTION.M3U</div>
+            <div class="text-xs neon-text mt-2 opacity-75">◄◄ NEURAL NETWORK AUDIO ►►</div>
+        </div>
+
+        <!-- Cyber Visualizer -->
+        <div class="glow-border p-3 mb-6 bg-black rounded-lg">
+            <div class="text-center neon-pink text-xs mb-2">FREQUENCY_ANALYZER</div>
+            <div class="flex items-end justify-center h-20 bg-black rounded">
+                <div class="cyber-viz w-3" style="animation-delay: 0s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.1s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.2s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.3s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.4s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.5s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.6s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.7s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.8s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 0.9s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 1.0s;"></div>
+                <div class="cyber-viz w-3" style="animation-delay: 1.1s;"></div>
+            </div>
+        </div>
+
+        <!-- Cyber Controls -->
+        <div class="grid grid-cols-5 gap-3 mb-6">
+            <button class="neon-btn p-3 text-sm font-bold neon-text rounded" onclick="previousTrack()">◄◄</button>
+            <button class="neon-btn p-3 text-sm font-bold neon-green rounded" onclick="togglePlay()" id="cyber-play">►</button>
+            <button class="neon-btn p-3 text-sm font-bold neon-pink rounded" onclick="pauseTrack()">▐▐</button>
+            <button class="neon-btn p-3 text-sm font-bold neon-text rounded" onclick="stopTrack()">■</button>
+            <button class="neon-btn p-3 text-sm font-bold neon-text rounded" onclick="nextTrack()">►►</button>
+        </div>
+
+        <!-- Cyber Progress -->
+        <div class="glow-border p-2 mb-6 bg-black rounded">
+            <div class="text-xs neon-text mb-2">PROGRESS_BAR.SYS</div>
+            <div class="cyber-progress rounded-full h-3" style="width: 60%"></div>
+        </div>
+
+        <!-- Cyber Volume Controls -->
+        <div class="flex items-center gap-4 mb-6">
+            <span class="neon-pink text-sm font-bold">VOL</span>
+            <div class="glow-border flex-1 p-2 bg-black rounded">
+                <div class="volume-cyber rounded h-3" style="width: 75%"></div>
+            </div>
+            <span class="neon-pink text-sm font-bold">BAL</span>
+            <div class="glow-border w-20 p-2 bg-black rounded">
+                <div class="bg-gradient-to-r from-cyan-400 to-pink-400 h-3 rounded" style="width: 50%; margin-left: 25%"></div>
+            </div>
+        </div>
+
+        <!-- Cyber Equalizer -->
+        <div class="glow-border p-4 bg-black rounded-lg">
+            <div class="neon-text text-sm mb-3 text-center">◢ CYBER_EQ.DLL ◣</div>
+            <div class="flex justify-center gap-2">
+                <div class="eq-cyber rounded w-4" style="height: 70px;"></div>
+                <div class="eq-cyber rounded w-4" style="height: 90px;"></div>
+                <div class="eq-cyber rounded w-4" style="height: 80px;"></div>
+                <div class="eq-cyber rounded w-4" style="height: 100px;"></div>
+                <div class="eq-cyber rounded w-4" style="height: 85px;"></div>
+                <div class="eq-cyber rounded w-4" style="height: 95px;"></div>
+                <div class="eq-cyber rounded w-4" style="height: 75px;"></div>
+                <div class="eq-cyber rounded w-4" style="height: 88px;"></div>
+            </div>
+            <div class="flex justify-between neon-pink text-xs mt-2">
+                <span>60</span>
+                <span>170</span>
+                <span>310</span>
+                <span>600</span>
+                <span>1K</span>
+                <span>3K</span>
+                <span>6K</span>
+                <span>12K</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isPlaying = false;
+        let currentTrack = 1;
+        let currentTime = 222; // 3:42 in seconds
+
+        const cyberTracks = [
+            { title: "SYNTHWAVE_01.MP3", playlist: "CYBERPUNK_MIX.M3U" },
+            { title: "RETROWAVE_02.MP3", playlist: "NEON_DREAMS.M3U" },
+            { title: "VAPORWAVE_03.MP3", playlist: "DIGITAL_PULSE.M3U" },
+            { title: "DARKSYNTH_04.MP3", playlist: "NEURAL_NET.M3U" }
+        ];
+
+        function updateCyberDisplay() {
+            const minutes = Math.floor(currentTime / 60);
+            const seconds = currentTime % 60;
+            document.getElementById('cyber-time').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const track = cyberTracks[currentTrack - 1];
+            document.getElementById('cyber-track').textContent = track.title;
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('cyber-play');
+            btn.textContent = isPlaying ? '▐▐' : '►';
+            
+            if (isPlaying) {
+                startCyberTimer();
+            } else {
+                stopCyberTimer();
+            }
+        }
+
+        function pauseTrack() {
+            isPlaying = false;
+            document.getElementById('cyber-play').textContent = '►';
+            stopCyberTimer();
+        }
+
+        function stopTrack() {
+            isPlaying = false;
+            currentTime = 0;
+            document.getElementById('cyber-play').textContent = '►';
+            updateCyberDisplay();
+            stopCyberTimer();
+        }
+
+        function nextTrack() {
+            currentTrack = currentTrack < cyberTracks.length ? currentTrack + 1 : 1;
+            currentTime = Math.floor(Math.random() * 300) + 60; // Random time
+            updateCyberDisplay();
+        }
+
+        function previousTrack() {
+            currentTrack = currentTrack > 1 ? currentTrack - 1 : cyberTracks.length;
+            currentTime = Math.floor(Math.random() * 300) + 60; // Random time
+            updateCyberDisplay();
+        }
+
+        let cyberTimer;
+        function startCyberTimer() {
+            cyberTimer = setInterval(() => {
+                if (isPlaying) {
+                    currentTime++;
+                    updateCyberDisplay();
+                }
+            }, 1000);
+        }
+
+        function stopCyberTimer() {
+            if (cyberTimer) {
+                clearInterval(cyberTimer);
+            }
+        }
+
+        // Initialize
+        updateCyberDisplay();
+    </script>
+</body>
+</html>

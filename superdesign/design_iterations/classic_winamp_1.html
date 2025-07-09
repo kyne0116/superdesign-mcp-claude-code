@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Winamp Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        .lcd-font {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .winamp-gradient {
+            background: linear-gradient(135deg, #c0c0c0 0%, #808080 50%, #404040 100%);
+        }
+        
+        .winamp-border {
+            border: 2px outset #c0c0c0;
+        }
+        
+        .winamp-inset {
+            border: 2px inset #c0c0c0;
+        }
+        
+        .lcd-display {
+            background: #001100;
+            color: #00ff00;
+            text-shadow: 0 0 8px #00ff00;
+            border: 2px inset #404040;
+        }
+        
+        .control-btn {
+            background: linear-gradient(135deg, #e0e0e0 0%, #a0a0a0 50%, #606060 100%);
+            border: 2px outset #c0c0c0;
+            transition: all 0.1s ease;
+        }
+        
+        .control-btn:active {
+            border: 2px inset #c0c0c0;
+            background: linear-gradient(135deg, #606060 0%, #a0a0a0 50%, #e0e0e0 100%);
+        }
+        
+        .eq-slider {
+            width: 20px;
+            height: 100px;
+            background: linear-gradient(to bottom, #00ff00 0%, #ffff00 50%, #ff0000 100%);
+            border: 1px solid #404040;
+        }
+        
+        .volume-bar {
+            background: linear-gradient(to right, #404040 0%, #00ff00 100%);
+            height: 8px;
+            border: 1px inset #404040;
+        }
+        
+        @keyframes visualizer {
+            0%, 100% { height: 20%; }
+            50% { height: 80%; }
+        }
+        
+        .viz-bar {
+            background: #00ff00;
+            animation: visualizer 0.5s ease-in-out infinite;
+            margin: 0 1px;
+        }
+    </style>
+</head>
+<body class="bg-gray-800 min-h-screen flex items-center justify-center p-4">
+    <div class="winamp-gradient winamp-border rounded-lg p-4 w-full max-w-md">
+        <!-- Title Bar -->
+        <div class="flex justify-between items-center mb-4 bg-gray-700 p-2 rounded">
+            <div class="text-white text-sm font-bold">Winamp</div>
+            <div class="flex gap-1">
+                <div class="w-4 h-4 bg-gray-500 rounded-sm"></div>
+                <div class="w-4 h-4 bg-gray-500 rounded-sm"></div>
+                <div class="w-4 h-4 bg-red-500 rounded-sm"></div>
+            </div>
+        </div>
+
+        <!-- LCD Display -->
+        <div class="lcd-display p-4 mb-4 rounded">
+            <div class="lcd-font text-lg mb-2" id="track-info">01. Darude - Sandstorm</div>
+            <div class="flex justify-between items-center">
+                <div class="lcd-font text-sm" id="time-display">02:34</div>
+                <div class="flex gap-1">
+                    <div class="text-xs">MP3</div>
+                    <div class="text-xs">192kbps</div>
+                    <div class="text-xs">44kHz</div>
+                </div>
+            </div>
+            <div class="text-xs mt-1 opacity-75">Classic Electronic Mix</div>
+        </div>
+
+        <!-- Visualizer -->
+        <div class="winamp-inset p-2 mb-4 bg-black rounded flex items-end justify-center h-16">
+            <div class="viz-bar w-2" style="animation-delay: 0s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.1s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.2s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.3s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.4s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.5s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.6s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.7s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.8s;"></div>
+            <div class="viz-bar w-2" style="animation-delay: 0.9s;"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="grid grid-cols-5 gap-2 mb-4">
+            <button class="control-btn p-2 text-xs font-bold" onclick="previousTrack()">PREV</button>
+            <button class="control-btn p-2 text-xs font-bold" onclick="togglePlay()" id="play-btn">PLAY</button>
+            <button class="control-btn p-2 text-xs font-bold" onclick="pauseTrack()">PAUSE</button>
+            <button class="control-btn p-2 text-xs font-bold" onclick="stopTrack()">STOP</button>
+            <button class="control-btn p-2 text-xs font-bold" onclick="nextTrack()">NEXT</button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="winamp-inset p-2 mb-4 bg-gray-700 rounded">
+            <div class="volume-bar rounded" style="width: 45%"></div>
+        </div>
+
+        <!-- Volume Control -->
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-xs font-bold text-white">VOL</span>
+            <div class="winamp-inset flex-1 p-1 bg-gray-700 rounded">
+                <div class="volume-bar rounded h-2" style="width: 70%"></div>
+            </div>
+            <span class="text-xs font-bold text-white">BAL</span>
+            <div class="winamp-inset w-16 p-1 bg-gray-700 rounded">
+                <div class="bg-green-500 h-2 rounded" style="width: 50%; margin-left: 25%"></div>
+            </div>
+        </div>
+
+        <!-- Mini Equalizer -->
+        <div class="winamp-inset p-2 bg-black rounded">
+            <div class="text-green-400 text-xs mb-2 text-center">EQUALIZER</div>
+            <div class="flex justify-center gap-1">
+                <div class="eq-slider rounded" style="height: 60px;"></div>
+                <div class="eq-slider rounded" style="height: 80px;"></div>
+                <div class="eq-slider rounded" style="height: 70px;"></div>
+                <div class="eq-slider rounded" style="height: 90px;"></div>
+                <div class="eq-slider rounded" style="height: 75px;"></div>
+                <div class="eq-slider rounded" style="height: 85px;"></div>
+                <div class="eq-slider rounded" style="height: 65px;"></div>
+            </div>
+            <div class="flex justify-between text-green-400 text-xs mt-1">
+                <span>60</span>
+                <span>170</span>
+                <span>310</span>
+                <span>600</span>
+                <span>1K</span>
+                <span>3K</span>
+                <span>6K</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isPlaying = false;
+        let currentTrack = 1;
+        let currentTime = 154; // 2:34 in seconds
+        let trackLength = 245; // 4:05 in seconds
+
+        const tracks = [
+            { title: "01. Darude - Sandstorm", artist: "Classic Electronic Mix" },
+            { title: "02. Blue (Da Ba Dee)", artist: "Eiffel 65 - Europop" },
+            { title: "03. What Is Love", artist: "Haddaway - Euro Dance" },
+            { title: "04. Rhythm Is A Dancer", artist: "Snap! - Dance Mix" }
+        ];
+
+        function updateDisplay() {
+            const minutes = Math.floor(currentTime / 60);
+            const seconds = currentTime % 60;
+            document.getElementById('time-display').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const track = tracks[currentTrack - 1];
+            document.getElementById('track-info').textContent = track.title;
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('play-btn');
+            btn.textContent = isPlaying ? 'PAUSE' : 'PLAY';
+            
+            if (isPlaying) {
+                startTimer();
+            } else {
+                stopTimer();
+            }
+        }
+
+        function pauseTrack() {
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = 'PLAY';
+            stopTimer();
+        }
+
+        function stopTrack() {
+            isPlaying = false;
+            currentTime = 0;
+            document.getElementById('play-btn').textContent = 'PLAY';
+            updateDisplay();
+            stopTimer();
+        }
+
+        function nextTrack() {
+            currentTrack = currentTrack < tracks.length ? currentTrack + 1 : 1;
+            currentTime = 0;
+            updateDisplay();
+        }
+
+        function previousTrack() {
+            currentTrack = currentTrack > 1 ? currentTrack - 1 : tracks.length;
+            currentTime = 0;
+            updateDisplay();
+        }
+
+        let timer;
+        function startTimer() {
+            timer = setInterval(() => {
+                if (isPlaying) {
+                    currentTime++;
+                    if (currentTime >= trackLength) {
+                        nextTrack();
+                    }
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timer) {
+                clearInterval(timer);
+            }
+        }
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>

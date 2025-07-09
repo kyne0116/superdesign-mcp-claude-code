@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalist Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .btn-calc {
+            transition: all 0.15s ease;
+        }
+        
+        .btn-calc:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-calc:hover {
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm">
+        <!-- Calculator Container -->
+        <div class="bg-white rounded-3xl shadow-lg p-8">
+            <!-- Display -->
+            <div class="mb-8">
+                <div class="bg-gray-50 rounded-2xl p-6 text-right">
+                    <div class="text-gray-400 text-sm mb-1" id="expression">0</div>
+                    <div class="text-3xl font-light text-black" id="display">0</div>
+                </div>
+            </div>
+            
+            <!-- Button Grid -->
+            <div class="grid grid-cols-4 gap-4">
+                <!-- Row 1 -->
+                <button class="btn-calc bg-gray-100 hover:bg-gray-200 text-gray-700 p-4 rounded-2xl text-lg font-medium" onclick="clearAll()">C</button>
+                <button class="btn-calc bg-gray-100 hover:bg-gray-200 text-gray-700 p-4 rounded-2xl text-lg font-medium" onclick="deleteLast()">⌫</button>
+                <button class="btn-calc bg-gray-100 hover:bg-gray-200 text-gray-700 p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('%')">%</button>
+                <button class="btn-calc bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('/')">÷</button>
+                
+                <!-- Row 2 -->
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('7')">7</button>
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('8')">8</button>
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('9')">9</button>
+                <button class="btn-calc bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('*')">×</button>
+                
+                <!-- Row 3 -->
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('4')">4</button>
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('5')">5</button>
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('6')">6</button>
+                <button class="btn-calc bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('-')">−</button>
+                
+                <!-- Row 4 -->
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('1')">1</button>
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('2')">2</button>
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('3')">3</button>
+                <button class="btn-calc bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('+')">+</button>
+                
+                <!-- Row 5 -->
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium col-span-2" onclick="appendToDisplay('0')">0</button>
+                <button class="btn-calc bg-gray-50 hover:bg-gray-100 text-black p-4 rounded-2xl text-lg font-medium" onclick="appendToDisplay('.')">.</button>
+                <button class="btn-calc bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl text-lg font-medium" onclick="calculate()">=</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let display = document.getElementById('display');
+        let expression = document.getElementById('expression');
+        let currentInput = '0';
+        let expressionStr = '';
+
+        function updateDisplay() {
+            display.textContent = currentInput;
+            expression.textContent = expressionStr || '0';
+        }
+
+        function appendToDisplay(value) {
+            if (currentInput === '0' && value !== '.') {
+                currentInput = value;
+            } else {
+                currentInput += value;
+            }
+            expressionStr = currentInput;
+            updateDisplay();
+        }
+
+        function clearAll() {
+            currentInput = '0';
+            expressionStr = '';
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            if (currentInput.length > 1) {
+                currentInput = currentInput.slice(0, -1);
+                expressionStr = currentInput;
+            } else {
+                currentInput = '0';
+                expressionStr = '';
+            }
+            updateDisplay();
+        }
+
+        function calculate() {
+            try {
+                let result = eval(currentInput.replace('×', '*').replace('÷', '/').replace('−', '-'));
+                currentInput = result.toString();
+                expressionStr = '';
+                updateDisplay();
+            } catch (error) {
+                currentInput = 'Error';
+                updateDisplay();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -106,6 +106,19 @@ List all Superdesign creations in workspace:
 - Shows extracted design systems
 - Displays file organization
 
+### superdesign_gallery
+Generate an interactive HTML gallery to view all designs:
+- **Browser-based gallery** - opens in your default browser
+- **Visual previews** - see design thumbnails in a responsive grid
+- **Interactive features** - click to view full-screen, copy paths
+- **Mobile responsive** - works on desktop, tablet, and mobile
+- **Auto-discovery** - finds all HTML/SVG files in design_iterations/
+
+Parameters:
+- `workspace_path`: Workspace directory (optional, defaults to current directory)
+
+**Output**: Gallery HTML file with embedded previews and JavaScript interactions. The gallery opens automatically in your browser, providing a Superdesign-like canvas experience.
+
 ## How the Orchestrator Works
 
 This MCP server operates as a **design orchestrator** rather than a direct generator:
@@ -131,6 +144,7 @@ Once configured, you can use Superdesign through Claude Code with natural langua
 - "Design a React component for a product card"
 - "Make a minimalist logo for a tech startup"
 - "Iterate on the dashboard design with better spacing"
+- "Show me the gallery of all my designs"
 
 **Requirements:**
 - Claude Code with MCP support

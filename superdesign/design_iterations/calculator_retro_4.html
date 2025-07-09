@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        body {
+            background: linear-gradient(45deg, #1a1a2e, #16213e, #0f3460);
+        }
+        
+        .retro-container {
+            background: linear-gradient(145deg, #2c2c54, #1a1a2e);
+            border: 3px solid #40407a;
+            box-shadow: 0 0 30px rgba(64, 64, 122, 0.3),
+                        inset 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+        
+        .retro-display {
+            background: #000;
+            border: 2px solid #40407a;
+            box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.1);
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        
+        .retro-btn {
+            background: linear-gradient(145deg, #40407a, #2c2c54);
+            border: 2px solid #40407a;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3),
+                        inset 0 0 10px rgba(255, 255, 255, 0.1);
+            transition: all 0.15s ease;
+            color: #ffffff;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+        
+        .retro-btn:hover {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4),
+                        inset 0 0 15px rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .retro-btn:active {
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+            transform: translateY(1px);
+        }
+        
+        .operator-retro {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a24);
+            border: 2px solid #ff6b6b;
+            color: white;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+        }
+        
+        .operator-retro:hover {
+            background: linear-gradient(145deg, #ff5252, #ff3742);
+            box-shadow: 0 6px 12px rgba(255, 107, 107, 0.4),
+                        inset 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        
+        .clear-retro {
+            background: linear-gradient(145deg, #feca57, #ff9ff3);
+            border: 2px solid #feca57;
+            color: #2c2c54;
+            text-shadow: 0 0 5px rgba(44, 44, 84, 0.8);
+        }
+        
+        .clear-retro:hover {
+            background: linear-gradient(145deg, #ff9ff3, #feca57);
+            box-shadow: 0 6px 12px rgba(254, 202, 87, 0.4),
+                        inset 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        
+        .glow-effect {
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 20px rgba(64, 64, 122, 0.3);
+            }
+            to {
+                box-shadow: 0 0 40px rgba(64, 64, 122, 0.6);
+            }
+        }
+        
+        .neon-text {
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00, 0 0 15px #00ff00;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm">
+        <!-- Calculator Container -->
+        <div class="retro-container rounded-3xl p-8 glow-effect">
+            <!-- Brand Label -->
+            <div class="text-center mb-6">
+                <div class="neon-text text-lg font-bold tracking-widest">RETRO-CALC</div>
+                <div class="text-gray-400 text-xs tracking-wider">80's EDITION</div>
+            </div>
+            
+            <!-- Display -->
+            <div class="mb-8">
+                <div class="retro-display rounded-xl p-6 text-right">
+                    <div class="text-green-400 text-sm mb-1 font-mono" id="expression">0</div>
+                    <div class="text-3xl font-bold neon-text font-mono" id="display">0</div>
+                </div>
+            </div>
+            
+            <!-- Button Grid -->
+            <div class="grid grid-cols-4 gap-3">
+                <!-- Row 1 -->
+                <button class="clear-retro p-4 rounded-xl text-lg font-bold" onclick="clearAll()">CLR</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="deleteLast()">←</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('%')">%</button>
+                <button class="operator-retro p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('/')">÷</button>
+                
+                <!-- Row 2 -->
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('7')">7</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('8')">8</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('9')">9</button>
+                <button class="operator-retro p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('*')">×</button>
+                
+                <!-- Row 3 -->
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('4')">4</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('5')">5</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('6')">6</button>
+                <button class="operator-retro p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('-')">−</button>
+                
+                <!-- Row 4 -->
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('1')">1</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('2')">2</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('3')">3</button>
+                <button class="operator-retro p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('+')">+</button>
+                
+                <!-- Row 5 -->
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold col-span-2" onclick="appendToDisplay('0')">0</button>
+                <button class="retro-btn p-4 rounded-xl text-lg font-bold" onclick="appendToDisplay('.')">•</button>
+                <button class="operator-retro p-4 rounded-xl text-lg font-bold text-xl" onclick="calculate()">=</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let display = document.getElementById('display');
+        let expression = document.getElementById('expression');
+        let currentInput = '0';
+        let expressionStr = '';
+
+        function updateDisplay() {
+            display.textContent = currentInput;
+            expression.textContent = expressionStr || '0';
+        }
+
+        function appendToDisplay(value) {
+            if (currentInput === '0' && value !== '.') {
+                currentInput = value;
+            } else {
+                currentInput += value;
+            }
+            expressionStr = currentInput;
+            updateDisplay();
+        }
+
+        function clearAll() {
+            currentInput = '0';
+            expressionStr = '';
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            if (currentInput.length > 1) {
+                currentInput = currentInput.slice(0, -1);
+                expressionStr = currentInput;
+            } else {
+                currentInput = '0';
+                expressionStr = '';
+            }
+            updateDisplay();
+        }
+
+        function calculate() {
+            try {
+                let result = eval(currentInput.replace('×', '*').replace('÷', '/').replace('−', '-'));
+                currentInput = result.toString();
+                expressionStr = '';
+                updateDisplay();
+            } catch (error) {
+                currentInput = 'ERROR';
+                updateDisplay();
+            }
+        }
+    </script>
+</body>
+</html>
