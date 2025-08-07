@@ -2,7 +2,7 @@
   "mcpServers": {
     "superdesign": {
       "command": "node",
-      "args": ["/path/to/superdesign/dist/index.js"],
+      "args": ["D:/02_Dev/Workspace/GitHub/superdesign-mcp-claude-code/dist/index.js"],
       "env": {}
     }
   }
