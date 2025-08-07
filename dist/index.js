@@ -29,6 +29,10 @@ const GenerateDesignSchema = z.object({
         .enum(["html", "react", "vue"])
         .default("html")
         .describe("Framework for UI components"),
+    workspace_path: z
+        .string()
+        .optional()
+        .describe("Workspace path (defaults to configured workspace)"),
 });
 const IterateDesignSchema = z.object({
     design_file: z
@@ -41,6 +45,10 @@ const IterateDesignSchema = z.object({
         .max(appConfig.maxVariations)
         .default(appConfig.defaultVariations)
         .describe("Number of design variations to create"),
+    workspace_path: z
+        .string()
+        .optional()
+        .describe("Workspace path (defaults to configured workspace)"),
 });
 const ExtractDesignSystemSchema = z.object({
     image_path: z
@@ -1926,6 +1934,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                             default: "html",
                             description: "Framework for UI components",
                         },
+                        workspace_path: {
+                            type: "string",
+                            description: "Workspace path (defaults to configured workspace)",
+                        },
                     },
                     required: ["prompt", "design_type"],
                 },
@@ -1950,6 +1962,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                             maximum: 5,
                             default: 3,
                             description: "Number of design variations to create",
+                        },
+                        workspace_path: {
+                            type: "string",
+                            description: "Workspace path (defaults to configured workspace)",
                         },
                     },
                     required: ["design_file", "feedback"],
@@ -2091,8 +2107,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
         switch (name) {
             case "superdesign_generate": {
-                const { prompt, design_type, variations, framework } = GenerateDesignSchema.parse(args);
-                const superdesignDir = getSuperdeignDirectory();
+                const { prompt, design_type, variations, framework, workspace_path } = GenerateDesignSchema.parse(args);
+                log(LogLevel.DEBUG, `Generate design request: ${design_type} - ${prompt}`, {
+                    workspace_path,
+                    variations,
+                    framework,
+                });
+                const superdesignDir = getSuperdeignDirectory(workspace_path);
                 const designIterationsDir = path.join(superdesignDir, "design_iterations");
                 const baseName = generateBaseName(prompt);
                 const extension = design_type === "logo" || design_type === "icon" ? "svg" : "html";
@@ -2155,7 +2176,12 @@ Please proceed to create these ${variations} design files now, then automaticall
                 };
             }
             case "superdesign_iterate": {
-                const { design_file, feedback, variations } = IterateDesignSchema.parse(args);
+                const { design_file, feedback, variations, workspace_path } = IterateDesignSchema.parse(args);
+                log(LogLevel.DEBUG, `Iterate design request: ${design_file}`, {
+                    workspace_path,
+                    variations,
+                    feedback: feedback.substring(0, 100) + "...",
+                });
                 if (!existsSync(design_file)) {
                     return {
                         content: [
@@ -2167,7 +2193,7 @@ Please proceed to create these ${variations} design files now, then automaticall
                     };
                 }
                 const originalContent = readFileSync(design_file, "utf8");
-                const superdesignDir = getSuperdeignDirectory();
+                const superdesignDir = getSuperdeignDirectory(workspace_path);
                 const designIterationsDir = path.join(superdesignDir, "design_iterations");
                 const baseName = path.basename(design_file, path.extname(design_file));
                 const extension = path.extname(design_file).substring(1);

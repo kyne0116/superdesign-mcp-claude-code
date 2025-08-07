@@ -14,7 +14,8 @@
     "config:doctor": "node scripts/config-doctor.js",
     "setup": "node scripts/setup.js",
     "setup:dev": "node scripts/setup.js --project",
-    "setup:quick": "node scripts/setup.js --skip-deps"
+    "setup:quick": "node scripts/setup.js --skip-deps",
+    "test:workspace": "node scripts/test-directory-creation.js"
   },
   "keywords": [
     "mcp",
