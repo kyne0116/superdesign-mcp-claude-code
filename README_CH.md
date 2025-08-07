@@ -35,6 +35,50 @@
 
 ## 🚀 安装指南
 
+### 🎯 推荐：自动化安装（一键安装）
+
+**最简单的安装方式**，适合大多数用户：
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/kyne0116/superdesign-mcp-claude-code.git
+cd superdesign-mcp-claude-code
+
+# 2. 一键安装和配置
+npm run setup
+
+# 3. 重启 Claude Code 并测试
+```
+
+**自动化安装脚本会完成以下操作：**
+
+- ✅ 自动检测并配置环境变量
+- ✅ 安装项目依赖
+- ✅ 构建项目
+- ✅ 生成跨平台兼容的 MCP 配置
+- ✅ 自动注册 MCP 服务器到 Claude Code
+- ✅ 验证安装是否成功
+
+**其他安装选项：**
+
+```bash
+# 快速安装（跳过依赖安装，适合已安装依赖的情况）
+npm run setup:quick
+
+# 项目级安装（仅在当前项目中可用）
+npm run setup:dev
+
+# 显示配置信息（不执行安装）
+npm run config:show
+
+# 诊断配置问题
+npm run config:doctor
+```
+
+### 📋 手动安装（高级用户）
+
+如果您需要更多控制或自动化安装遇到问题，可以使用手动安装方式：
+
 ### Windows 10/11 安装
 
 #### 方法一：使用 PowerShell（推荐）
@@ -240,6 +284,85 @@ sudo pacman -S nodejs npm
 ```
 
 ## ⚙️ 配置说明
+
+### 🔧 环境变量配置系统
+
+Superdesign MCP 服务器使用先进的环境变量配置系统，提供以下优势：
+
+#### 🌟 配置系统特性
+
+- **跨平台兼容**：自动处理 Windows、macOS、Linux 的路径差异
+- **智能默认值**：无需配置即可使用，自动检测项目路径
+- **团队协作友好**：通过`.env.example`模板文件共享配置
+- **版本控制安全**：`.env`文件不会被提交到版本控制
+- **配置验证**：内置配置诊断和验证工具
+
+#### 📁 配置文件结构
+
+```
+项目根目录/
+├── .env.example          # 配置模板文件（版本控制）
+├── .env                  # 本地配置文件（不进入版本控制）
+├── src/config.ts         # 配置管理模块
+└── scripts/
+    ├── setup.js          # 自动化安装脚本
+    ├── generate-mcp-config.js  # MCP配置生成器
+    └── config-doctor.js  # 配置诊断工具
+```
+
+#### 🛠️ 环境变量配置
+
+**基本配置示例**：
+
+```bash
+# .env 文件示例
+MCP_SERVER_NAME=superdesign
+WORKSPACE_PATH=D:/Projects/MyDesigns
+MCP_SERVER_PATH=D:/Projects/superdesign-mcp-claude-code/dist/index.js
+DEFAULT_VARIATIONS=3
+LIVE_GALLERY_PORT=3000
+DEBUG=false
+LOG_LEVEL=info
+```
+
+**完整配置选项**：
+
+- `WORKSPACE_PATH`: 设计文件工作目录
+- `MCP_SERVER_PATH`: MCP 服务器可执行文件路径
+- `DEFAULT_VARIATIONS`: 默认生成的设计变体数量
+- `MAX_VARIATIONS`: 最大设计变体数量
+- `LIVE_GALLERY_PORT`: 实时画廊服务器端口
+- `DEBUG`: 启用调试模式
+- `LOG_LEVEL`: 日志级别 (error, warn, info, debug)
+
+查看完整配置选项请参考 `.env.example` 文件。
+
+#### 🔄 配置系统与 claude mcp add 的关系
+
+我们的环境变量配置系统与 Claude 的`claude mcp add`命令形成**分层互补**的关系：
+
+```
+┌─────────────────────────────────────┐
+│ Claude Code MCP 注册层               │
+│ (claude mcp add 命令负责)            │
+│ - 告诉Claude Code如何启动MCP服务器    │
+│ - 管理MCP服务器的生命周期            │
+└─────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────┐
+│ MCP服务器配置层                      │
+│ (环境变量系统负责)                   │
+│ - 配置MCP服务器内部行为              │
+│ - 管理工作目录、文件路径等            │
+│ - 跨平台兼容性处理                   │
+│ - 团队协作和配置管理                 │
+└─────────────────────────────────────┘
+```
+
+**推荐工作流程**：
+
+1. 使用我们的`npm run setup`自动配置两个层面
+2. 或手动使用`claude mcp add`注册服务器，然后配置`.env`文件
 
 ### MCP 服务器配置
 
@@ -462,6 +585,30 @@ source ~/.bashrc
 # 按照上述 nvm 安装步骤
 ```
 
+### 🔧 自动化诊断工具
+
+在尝试手动排除故障之前，建议先使用我们的自动化诊断工具：
+
+```bash
+# 运行完整的配置诊断
+npm run config:doctor
+
+# 显示当前配置信息
+npm run config:show
+
+# 重新运行自动化安装
+npm run setup:quick
+```
+
+**诊断工具会检查：**
+
+- ✅ Node.js 和 npm 版本
+- ✅ 项目文件完整性
+- ✅ 环境变量配置
+- ✅ MCP 服务器路径
+- ✅ Claude Code CLI 可用性
+- ✅ MCP 服务器注册状态
+
 ### 通用问题解决
 
 #### 问题 1：MCP 工具未出现
@@ -471,12 +618,15 @@ source ~/.bashrc
 **解决方案**：
 
 ```bash
-# 1. 完全退出 Claude Code
-# 2. 验证服务器注册
-claude mcp list
+# 1. 运行诊断工具
+npm run config:doctor
 
-# 3. 重启 Claude Code
-# 4. 询问 Claude："你有哪些可用的工具？"
+# 2. 如果诊断发现问题，重新安装
+npm run setup:quick
+
+# 3. 完全退出 Claude Code
+# 4. 重启 Claude Code
+# 5. 询问 Claude："你有哪些可用的工具？"
 ```
 
 #### 问题 2：构建错误

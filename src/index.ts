@@ -6,91 +6,173 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-import { readFileSync, existsSync, mkdirSync, writeFileSync, statSync, unlinkSync, watchFile, unwatchFile } from "fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  unwatchFile,
+  watchFile,
+  writeFileSync,
+} from "fs";
 import { glob } from "glob";
-import * as path from "path";
 import * as http from "http";
+import * as path from "path";
 import * as url from "url";
+import { z } from "zod";
+import {
+  appConfig,
+  getDesignIterationsPath,
+  getDesignSystemPath,
+  getSuperdeignDirectoryPath,
+  log,
+  LogLevel,
+} from "./config.js";
 
-const server = new Server(
-  {
-    name: "superdesign-mcp-server",
-    version: "1.0.0",
-  }
-);
+const server = new Server({
+  name: appConfig.serverName,
+  version: appConfig.serverVersion,
+});
 
 // Tool schemas for Superdesign functionality
 const GenerateDesignSchema = z.object({
   prompt: z.string().describe("Design prompt describing what to create"),
-  design_type: z.enum(["ui", "wireframe", "component", "logo", "icon"]).describe("Type of design to generate"),
-  variations: z.number().min(1).max(5).default(3).describe("Number of design variations to create"),
-  framework: z.enum(["html", "react", "vue"]).default("html").describe("Framework for UI components")
+  design_type: z
+    .enum(["ui", "wireframe", "component", "logo", "icon"])
+    .describe("Type of design to generate"),
+  variations: z
+    .number()
+    .min(1)
+    .max(appConfig.maxVariations)
+    .default(appConfig.defaultVariations)
+    .describe("Number of design variations to create"),
+  framework: z
+    .enum(["html", "react", "vue"])
+    .default("html")
+    .describe("Framework for UI components"),
 });
 
 const IterateDesignSchema = z.object({
-  design_file: z.string().describe("Path to existing design file to iterate on"),
+  design_file: z
+    .string()
+    .describe("Path to existing design file to iterate on"),
   feedback: z.string().describe("Feedback for improving the design"),
-  variations: z.number().min(1).max(5).default(3).describe("Number of design variations to create")
+  variations: z
+    .number()
+    .min(1)
+    .max(appConfig.maxVariations)
+    .default(appConfig.defaultVariations)
+    .describe("Number of design variations to create"),
 });
 
 const ExtractDesignSystemSchema = z.object({
-  image_path: z.string().describe("Path to screenshot/image to extract design system from")
+  image_path: z
+    .string()
+    .describe("Path to screenshot/image to extract design system from"),
 });
 
 const ListDesignsSchema = z.object({
-  workspace_path: z.string().optional().describe("Workspace path (defaults to current directory)")
+  workspace_path: z
+    .string()
+    .optional()
+    .describe("Workspace path (defaults to current directory)"),
 });
 
 const GallerySchema = z.object({
-  workspace_path: z.string().optional().describe("Workspace path (defaults to current directory)")
+  workspace_path: z
+    .string()
+    .optional()
+    .describe("Workspace path (defaults to current directory)"),
 });
 
 const DeleteDesignSchema = z.object({
   filename: z.string().describe("Name of the design file to delete"),
-  workspace_path: z.string().optional().describe("Workspace path (defaults to current directory)")
+  workspace_path: z
+    .string()
+    .optional()
+    .describe("Workspace path (defaults to current directory)"),
 });
 
 const CleanupSchema = z.object({
-  workspace_path: z.string().optional().describe("Workspace path (defaults to current directory)"),
-  max_age_days: z.number().optional().describe("Delete designs older than X days (default: 30)"),
-  max_count: z.number().optional().describe("Keep only the latest X designs (default: 50)"),
-  dry_run: z.boolean().optional().describe("Show what would be deleted without actually deleting")
+  workspace_path: z
+    .string()
+    .optional()
+    .describe("Workspace path (defaults to current directory)"),
+  max_age_days: z
+    .number()
+    .optional()
+    .describe(
+      `Delete designs older than X days (default: ${appConfig.defaultCleanupDays})`
+    ),
+  max_count: z
+    .number()
+    .optional()
+    .describe(
+      `Keep only the latest X designs (default: ${appConfig.defaultCleanupCount})`
+    ),
+  dry_run: z
+    .boolean()
+    .optional()
+    .describe("Show what would be deleted without actually deleting"),
 });
 
 const LiveGallerySchema = z.object({
-  workspace_path: z.string().optional().describe("Workspace path (defaults to current directory)"),
-  port: z.number().optional().describe("Port for the live gallery server (default: 3000)")
+  workspace_path: z
+    .string()
+    .optional()
+    .describe("Workspace path (defaults to current directory)"),
+  port: z
+    .number()
+    .optional()
+    .describe(
+      `Port for the live gallery server (default: ${appConfig.liveGalleryPort})`
+    ),
 });
 
 const CheckFilesSchema = z.object({
-  workspace_path: z.string().optional().describe("Workspace path (defaults to current directory)"),
-  manifest: z.array(z.object({
-    name: z.string(),
-    size: z.number(),
-    modified: z.number()
-  })).describe("File manifest to compare against")
+  workspace_path: z
+    .string()
+    .optional()
+    .describe("Workspace path (defaults to current directory)"),
+  manifest: z
+    .array(
+      z.object({
+        name: z.string(),
+        size: z.number(),
+        modified: z.number(),
+      })
+    )
+    .describe("File manifest to compare against"),
 });
 
 // Get or create superdesign directory
 function getSuperdeignDirectory(workspacePath?: string): string {
-  const basePath = workspacePath || process.cwd();
-  const superdesignDir = path.join(basePath, 'superdesign');
-  
+  const basePath = workspacePath || appConfig.workspacePath;
+  const superdesignDir = getSuperdeignDirectoryPath(basePath);
+
+  log(LogLevel.DEBUG, `Creating superdesign directory: ${superdesignDir}`);
+
   if (!existsSync(superdesignDir)) {
     mkdirSync(superdesignDir, { recursive: true });
+    log(LogLevel.INFO, `Created superdesign directory: ${superdesignDir}`);
   }
-  
-  const designIterationsDir = path.join(superdesignDir, 'design_iterations');
+
+  const designIterationsDir = getDesignIterationsPath(basePath);
   if (!existsSync(designIterationsDir)) {
     mkdirSync(designIterationsDir, { recursive: true });
+    log(
+      LogLevel.INFO,
+      `Created design iterations directory: ${designIterationsDir}`
+    );
   }
-  
-  const designSystemDir = path.join(superdesignDir, 'design_system');
+
+  const designSystemDir = getDesignSystemPath(basePath);
   if (!existsSync(designSystemDir)) {
     mkdirSync(designSystemDir, { recursive: true });
+    log(LogLevel.INFO, `Created design system directory: ${designSystemDir}`);
   }
-  
+
   return superdesignDir;
 }
 
@@ -107,7 +189,7 @@ interface DesignMetadata {
 
 // Get or create metadata file
 function getMetadataFilePath(superdesignDir: string): string {
-  return path.join(superdesignDir, 'metadata.json');
+  return path.join(superdesignDir, "metadata.json");
 }
 
 // Load existing metadata
@@ -116,41 +198,50 @@ function loadMetadata(superdesignDir: string): DesignMetadata[] {
   if (!existsSync(metadataPath)) {
     return [];
   }
-  
+
   try {
-    const data = readFileSync(metadataPath, 'utf8');
+    const data = readFileSync(metadataPath, "utf8");
     return JSON.parse(data) as DesignMetadata[];
   } catch (error) {
-    console.error('Error loading metadata:', error);
+    console.error("Error loading metadata:", error);
     return [];
   }
 }
 
 // Save metadata
-function saveMetadata(superdesignDir: string, metadata: DesignMetadata[]): void {
+function saveMetadata(
+  superdesignDir: string,
+  metadata: DesignMetadata[]
+): void {
   const metadataPath = getMetadataFilePath(superdesignDir);
   try {
-    writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
+    writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), "utf8");
   } catch (error) {
-    console.error('Error saving metadata:', error);
+    console.error("Error saving metadata:", error);
   }
 }
 
 // Add or update design metadata
-function updateDesignMetadata(superdesignDir: string, fileName: string, designType: string, prompt?: string, framework?: string): void {
-  const designIterationsDir = path.join(superdesignDir, 'design_iterations');
+function updateDesignMetadata(
+  superdesignDir: string,
+  fileName: string,
+  designType: string,
+  prompt?: string,
+  framework?: string
+): void {
+  const designIterationsDir = path.join(superdesignDir, "design_iterations");
   const filePath = path.join(designIterationsDir, fileName);
-  
+
   if (!existsSync(filePath)) {
     return;
   }
-  
+
   const stats = statSync(filePath);
   const metadata = loadMetadata(superdesignDir);
-  
+
   // Remove existing entry for this file
-  const filteredMetadata = metadata.filter(m => m.fileName !== fileName);
-  
+  const filteredMetadata = metadata.filter((m) => m.fileName !== fileName);
+
   // Add new entry
   const newEntry: DesignMetadata = {
     fileName,
@@ -159,9 +250,9 @@ function updateDesignMetadata(superdesignDir: string, fileName: string, designTy
     fileSize: stats.size,
     designType,
     prompt,
-    framework
+    framework,
   };
-  
+
   filteredMetadata.push(newEntry);
   saveMetadata(superdesignDir, filteredMetadata);
 }
@@ -169,11 +260,11 @@ function updateDesignMetadata(superdesignDir: string, fileName: string, designTy
 // Get design metadata with file stats
 function getDesignMetadata(superdesignDir: string): DesignMetadata[] {
   const metadata = loadMetadata(superdesignDir);
-  const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-  
+  const designIterationsDir = path.join(superdesignDir, "design_iterations");
+
   // Update metadata for existing files and remove entries for deleted files
   const updatedMetadata: DesignMetadata[] = [];
-  
+
   for (const entry of metadata) {
     const filePath = path.join(designIterationsDir, entry.fileName);
     if (existsSync(filePath)) {
@@ -182,11 +273,11 @@ function getDesignMetadata(superdesignDir: string): DesignMetadata[] {
         ...entry,
         filePath,
         fileSize: stats.size,
-        createdAt: entry.createdAt || stats.birthtime.toISOString()
+        createdAt: entry.createdAt || stats.birthtime.toISOString(),
       });
     }
   }
-  
+
   saveMetadata(superdesignDir, updatedMetadata);
   return updatedMetadata;
 }
@@ -200,73 +291,94 @@ interface CleanupSettings {
 
 // Get or create cleanup settings
 function getCleanupSettings(superdesignDir: string): CleanupSettings {
-  const settingsPath = path.join(superdesignDir, 'cleanup-settings.json');
+  const settingsPath = path.join(superdesignDir, "cleanup-settings.json");
   const defaultSettings: CleanupSettings = {
-    maxAgeDays: 30,
-    maxCount: 50,
-    enabled: true
+    maxAgeDays: appConfig.defaultCleanupDays,
+    maxCount: appConfig.defaultCleanupCount,
+    enabled: true,
   };
-  
+
   if (!existsSync(settingsPath)) {
-    writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2), 'utf8');
+    writeFileSync(
+      settingsPath,
+      JSON.stringify(defaultSettings, null, 2),
+      "utf8"
+    );
     return defaultSettings;
   }
-  
+
   try {
-    const data = readFileSync(settingsPath, 'utf8');
+    const data = readFileSync(settingsPath, "utf8");
     return { ...defaultSettings, ...JSON.parse(data) };
   } catch (error) {
-    console.error('Error loading cleanup settings:', error);
+    console.error("Error loading cleanup settings:", error);
     return defaultSettings;
   }
 }
 
 // Save cleanup settings
-function saveCleanupSettings(superdesignDir: string, settings: CleanupSettings): void {
-  const settingsPath = path.join(superdesignDir, 'cleanup-settings.json');
+function saveCleanupSettings(
+  superdesignDir: string,
+  settings: CleanupSettings
+): void {
+  const settingsPath = path.join(superdesignDir, "cleanup-settings.json");
   try {
-    writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf8");
   } catch (error) {
-    console.error('Error saving cleanup settings:', error);
+    console.error("Error saving cleanup settings:", error);
   }
 }
 
 // Perform cleanup based on settings
-function performCleanup(superdesignDir: string, maxAgeDays?: number, maxCount?: number, dryRun: boolean = false): { deleted: string[], kept: string[], errors: string[] } {
+function performCleanup(
+  superdesignDir: string,
+  maxAgeDays?: number,
+  maxCount?: number,
+  dryRun: boolean = false
+): { deleted: string[]; kept: string[]; errors: string[] } {
   const settings = getCleanupSettings(superdesignDir);
   const actualMaxAge = maxAgeDays ?? settings.maxAgeDays;
   const actualMaxCount = maxCount ?? settings.maxCount;
-  
+
   const metadata = getDesignMetadata(superdesignDir);
   const now = new Date();
-  const cutoffDate = new Date(now.getTime() - (actualMaxAge * 24 * 60 * 60 * 1000));
-  
+  const cutoffDate = new Date(
+    now.getTime() - actualMaxAge * 24 * 60 * 60 * 1000
+  );
+
   // Sort by creation date (newest first)
-  const sortedMetadata = metadata.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  
+  const sortedMetadata = metadata.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   const deleted: string[] = [];
   const kept: string[] = [];
   const errors: string[] = [];
-  
+
   for (let i = 0; i < sortedMetadata.length; i++) {
     const design = sortedMetadata[i];
     const createdAt = new Date(design.createdAt);
     const shouldDelete = i >= actualMaxCount || createdAt < cutoffDate;
-    
+
     if (shouldDelete) {
       if (!dryRun) {
         try {
-          const designIterationsDir = path.join(superdesignDir, 'design_iterations');
+          const designIterationsDir = path.join(
+            superdesignDir,
+            "design_iterations"
+          );
           const filePath = path.join(designIterationsDir, design.fileName);
-          
+
           if (existsSync(filePath)) {
             unlinkSync(filePath);
             // Remove from metadata
             const allMetadata = loadMetadata(superdesignDir);
-            const filteredMetadata = allMetadata.filter(m => m.fileName !== design.fileName);
+            const filteredMetadata = allMetadata.filter(
+              (m) => m.fileName !== design.fileName
+            );
             saveMetadata(superdesignDir, filteredMetadata);
           }
-          
+
           deleted.push(design.fileName);
         } catch (error: any) {
           errors.push(`Failed to delete ${design.fileName}: ${error.message}`);
@@ -278,13 +390,16 @@ function performCleanup(superdesignDir: string, maxAgeDays?: number, maxCount?: 
       kept.push(design.fileName);
     }
   }
-  
+
   return { deleted, kept, errors };
 }
 
 // Generate base filename from prompt
 function generateBaseName(prompt: string): string {
-  return prompt.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 20);
+  return prompt
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "_")
+    .substring(0, 20);
 }
 
 // File checking for smart refresh integration
@@ -295,38 +410,50 @@ interface FileStatus {
   exists: boolean;
 }
 
-function checkFileChanges(superdesignDir: string, manifest: Array<{name: string; size: number; modified: number}>): {hasChanges: boolean; changes: Array<{file: string; type: 'added' | 'modified' | 'deleted'}>} {
-  const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-  const currentFiles = glob.sync('*.{html,svg}', { cwd: designIterationsDir });
-  const changes: Array<{file: string; type: 'added' | 'modified' | 'deleted'}> = [];
-  
+function checkFileChanges(
+  superdesignDir: string,
+  manifest: Array<{ name: string; size: number; modified: number }>
+): {
+  hasChanges: boolean;
+  changes: Array<{ file: string; type: "added" | "modified" | "deleted" }>;
+} {
+  const designIterationsDir = path.join(superdesignDir, "design_iterations");
+  const currentFiles = glob.sync("*.{html,svg}", { cwd: designIterationsDir });
+  const changes: Array<{
+    file: string;
+    type: "added" | "modified" | "deleted";
+  }> = [];
+
   // Check for new or modified files
-  currentFiles.forEach(file => {
+  currentFiles.forEach((file) => {
     const filePath = path.join(designIterationsDir, file);
     if (existsSync(filePath)) {
       const stats = statSync(filePath);
-      const manifestEntry = manifest.find(m => m.name === file);
-      
+      const manifestEntry = manifest.find((m) => m.name === file);
+
       if (!manifestEntry) {
         // New file
-        changes.push({ file, type: 'added' });
-      } else if (stats.size !== manifestEntry.size || stats.mtime.getTime() !== manifestEntry.modified) {
+        changes.push({ file, type: "added" });
+      } else if (
+        stats.size !== manifestEntry.size ||
+        stats.mtime.getTime() !== manifestEntry.modified
+      ) {
         // Modified file
-        changes.push({ file, type: 'modified' });
+        changes.push({ file, type: "modified" });
       }
     }
   });
-  
+
   // Check for deleted files
-  manifest.forEach(manifestEntry => {
+  manifest.forEach((manifestEntry) => {
     if (!currentFiles.includes(manifestEntry.name)) {
-      changes.push({ file: manifestEntry.name, type: 'deleted' });
+      changes.push({ file: manifestEntry.name, type: "deleted" });
     }
   });
-  
+
   return {
     hasChanges: changes.length > 0,
-    changes
+    changes,
   };
 }
 
@@ -341,78 +468,88 @@ interface FileWatcher {
 const activeWatchers = new Map<string, FileWatcher>();
 
 function startFileWatcher(superdesignDir: string): FileWatcher {
-  const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-  
+  const designIterationsDir = path.join(superdesignDir, "design_iterations");
+
   if (activeWatchers.has(superdesignDir)) {
     return activeWatchers.get(superdesignDir)!;
   }
-  
+
   const watcher: FileWatcher = {
     watchedFiles: new Set(),
     clients: new Set(),
-    superdesignDir
+    superdesignDir,
   };
-  
+
   // Watch for new files in design_iterations directory
   const watchDir = () => {
     if (existsSync(designIterationsDir)) {
-      const files = glob.sync('*.{html,svg}', { cwd: designIterationsDir });
-      
+      const files = glob.sync("*.{html,svg}", { cwd: designIterationsDir });
+
       // Watch new files
-      files.forEach(file => {
+      files.forEach((file) => {
         const fullPath = path.join(designIterationsDir, file);
         if (!watcher.watchedFiles.has(fullPath)) {
           watcher.watchedFiles.add(fullPath);
           watchFile(fullPath, { interval: 1000 }, () => {
-            notifyClients(watcher, 'file_changed', { file, type: 'modified' });
+            notifyClients(watcher, "file_changed", { file, type: "modified" });
           });
         }
       });
-      
+
       // Unwatch deleted files
-      watcher.watchedFiles.forEach(filePath => {
+      watcher.watchedFiles.forEach((filePath) => {
         if (!existsSync(filePath)) {
           unwatchFile(filePath);
           watcher.watchedFiles.delete(filePath);
           const fileName = path.basename(filePath);
-          notifyClients(watcher, 'file_changed', { file: fileName, type: 'deleted' });
+          notifyClients(watcher, "file_changed", {
+            file: fileName,
+            type: "deleted",
+          });
         }
       });
-      
+
       // Check for new files
-      const currentFiles = new Set(files.map(f => path.join(designIterationsDir, f)));
-      const newFiles = [...currentFiles].filter(f => !watcher.watchedFiles.has(f));
-      
+      const currentFiles = new Set(
+        files.map((f) => path.join(designIterationsDir, f))
+      );
+      const newFiles = [...currentFiles].filter(
+        (f) => !watcher.watchedFiles.has(f)
+      );
+
       if (newFiles.length > 0) {
-        newFiles.forEach(filePath => {
+        newFiles.forEach((filePath) => {
           const fileName = path.basename(filePath);
-          notifyClients(watcher, 'file_changed', { file: fileName, type: 'added' });
+          notifyClients(watcher, "file_changed", {
+            file: fileName,
+            type: "added",
+          });
         });
       }
     }
   };
-  
+
   // Initial watch setup
   watchDir();
-  
+
   // Watch for directory changes every 2 seconds
   const interval = setInterval(watchDir, 2000);
-  
+
   // Store cleanup function
   watcher.cleanup = () => {
     clearInterval(interval);
-    watcher.watchedFiles.forEach(filePath => unwatchFile(filePath));
+    watcher.watchedFiles.forEach((filePath) => unwatchFile(filePath));
     watcher.clients.clear();
   };
-  
+
   activeWatchers.set(superdesignDir, watcher);
   return watcher;
 }
 
 function notifyClients(watcher: FileWatcher, event: string, data: any): void {
   const message = `data: ${JSON.stringify({ event, data })}\n\n`;
-  
-  watcher.clients.forEach(client => {
+
+  watcher.clients.forEach((client) => {
     try {
       client.write(message);
     } catch (error) {
@@ -431,135 +568,168 @@ function stopFileWatcher(superdesignDir: string): void {
 }
 
 // Live gallery server
-function createLiveGalleryServer(superdesignDir: string, port: number = 3000): Promise<string> {
+function createLiveGalleryServer(
+  superdesignDir: string,
+  port: number = appConfig.liveGalleryPort
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
-      const parsedUrl = url.parse(req.url || '', true);
+      const parsedUrl = url.parse(req.url || "", true);
       const pathname = parsedUrl.pathname;
-      
+
       // CORS headers
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-      
-      if (req.method === 'OPTIONS') {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+      if (req.method === "OPTIONS") {
         res.writeHead(200);
         res.end();
         return;
       }
-      
-      if (pathname === '/') {
+
+      if (pathname === "/") {
         // Serve the gallery HTML
         try {
-          const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-          const designFiles = glob.sync('*.{html,svg}', { cwd: designIterationsDir });
-          const galleryHtml = generateLiveGalleryHTML(designFiles, superdesignDir);
-          
-          res.writeHead(200, { 'Content-Type': 'text/html' });
+          const designIterationsDir = path.join(
+            superdesignDir,
+            "design_iterations"
+          );
+          const designFiles = glob.sync("*.{html,svg}", {
+            cwd: designIterationsDir,
+          });
+          const galleryHtml = generateLiveGalleryHTML(
+            designFiles,
+            superdesignDir
+          );
+
+          res.writeHead(200, { "Content-Type": "text/html" });
           res.end(galleryHtml);
         } catch (error: any) {
-          res.writeHead(500, { 'Content-Type': 'text/plain' });
+          res.writeHead(500, { "Content-Type": "text/plain" });
           res.end(`Error generating gallery: ${error.message}`);
         }
-      } else if (pathname === '/events') {
+      } else if (pathname === "/events") {
         // Server-Sent Events endpoint
         res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
         });
-        
+
         const watcher = startFileWatcher(superdesignDir);
         watcher.clients.add(res);
-        
+
         // Send initial connection message
         res.write('data: {"event": "connected", "data": {}}\n\n');
-        
+
         // Clean up when client disconnects
-        req.on('close', () => {
+        req.on("close", () => {
           watcher.clients.delete(res);
         });
-      } else if (pathname?.startsWith('/design_iterations/')) {
+      } else if (pathname?.startsWith("/design_iterations/")) {
         // Serve design files
-        const fileName = pathname.substring('/design_iterations/'.length);
-        const filePath = path.join(superdesignDir, 'design_iterations', fileName);
-        
+        const fileName = pathname.substring("/design_iterations/".length);
+        const filePath = path.join(
+          superdesignDir,
+          "design_iterations",
+          fileName
+        );
+
         if (existsSync(filePath)) {
           const ext = path.extname(fileName).toLowerCase();
-          const contentType = ext === '.html' ? 'text/html' : 
-                            ext === '.svg' ? 'image/svg+xml' : 'text/plain';
-          
-          res.writeHead(200, { 'Content-Type': contentType });
+          const contentType =
+            ext === ".html"
+              ? "text/html"
+              : ext === ".svg"
+              ? "image/svg+xml"
+              : "text/plain";
+
+          res.writeHead(200, { "Content-Type": contentType });
           res.end(readFileSync(filePath));
         } else {
-          res.writeHead(404, { 'Content-Type': 'text/plain' });
-          res.end('File not found');
+          res.writeHead(404, { "Content-Type": "text/plain" });
+          res.end("File not found");
         }
       } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Not found');
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not found");
       }
     });
-    
+
     server.listen(port, () => {
       resolve(`http://localhost:${port}`);
     });
-    
-    server.on('error', (error) => {
+
+    server.on("error", (error) => {
       reject(error);
     });
   });
 }
 
 // Generate live gallery HTML with real-time updates
-function generateLiveGalleryHTML(designFiles: string[], superdesignDir: string): string {
+function generateLiveGalleryHTML(
+  designFiles: string[],
+  superdesignDir: string
+): string {
   const metadata = getDesignMetadata(superdesignDir);
-  const metadataMap = new Map(metadata.map(m => [m.fileName, m]));
-  
-  const designCards = designFiles.map((file, index) => {
-    const fileExtension = path.extname(file).toLowerCase();
-    const fileName = path.basename(file, fileExtension);
-    const relativePath = `/design_iterations/${file}`;
-    const fileMetadata = metadataMap.get(file);
-    
-    let previewContent = '';
-    if (fileExtension === '.html') {
-      previewContent = `<iframe src="${relativePath}" loading="lazy"></iframe>`;
-    } else if (fileExtension === '.svg') {
-      previewContent = `<object data="${relativePath}" type="image/svg+xml" class="svg-preview"></object>`;
-    }
-    
-    // Format file size
-    const formatFileSize = (bytes: number) => {
-      if (bytes < 1024) return `${bytes} B`;
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    };
-    
-    // Format date
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-    };
-    
-    return `
-      <div class="design-card" data-file="${file}" data-created="${fileMetadata?.createdAt || ''}">
+  const metadataMap = new Map(metadata.map((m) => [m.fileName, m]));
+
+  const designCards = designFiles
+    .map((file, index) => {
+      const fileExtension = path.extname(file).toLowerCase();
+      const fileName = path.basename(file, fileExtension);
+      const relativePath = `/design_iterations/${file}`;
+      const fileMetadata = metadataMap.get(file);
+
+      let previewContent = "";
+      if (fileExtension === ".html") {
+        previewContent = `<iframe src="${relativePath}" loading="lazy"></iframe>`;
+      } else if (fileExtension === ".svg") {
+        previewContent = `<object data="${relativePath}" type="image/svg+xml" class="svg-preview"></object>`;
+      }
+
+      // Format file size
+      const formatFileSize = (bytes: number) => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      };
+
+      // Format date
+      const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      };
+
+      return `
+      <div class="design-card" data-file="${file}" data-created="${
+        fileMetadata?.createdAt || ""
+      }">
         <div class="design-header">
           <div class="design-title">
             <h3>${fileName}</h3>
             <span class="design-type">${fileExtension.toUpperCase()}</span>
           </div>
           <div class="design-meta">
-            ${fileMetadata ? `
-              <span class="design-size">${formatFileSize(fileMetadata.fileSize)}</span>
-              <span class="design-date">${formatDate(fileMetadata.createdAt)}</span>
-            ` : ''}
+            ${
+              fileMetadata
+                ? `
+              <span class="design-size">${formatFileSize(
+                fileMetadata.fileSize
+              )}</span>
+              <span class="design-date">${formatDate(
+                fileMetadata.createdAt
+              )}</span>
+            `
+                : ""
+            }
           </div>
         </div>
         <div class="design-preview">
@@ -572,8 +742,9 @@ function generateLiveGalleryHTML(designFiles: string[], superdesignDir: string):
         </div>
       </div>
     `;
-  }).join('');
-  
+    })
+    .join("");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1165,73 +1336,92 @@ Your goal is to extract a generalized and reusable design system from the screen
 `;
 
 // Generate enhanced gallery HTML with smart refresh detection
-function generateGalleryHTML(designFiles: string[], superdesignDir: string): string {
+function generateGalleryHTML(
+  designFiles: string[],
+  superdesignDir: string
+): string {
   const metadata = getDesignMetadata(superdesignDir);
-  const metadataMap = new Map(metadata.map(m => [m.fileName, m]));
-  
+  const metadataMap = new Map(metadata.map((m) => [m.fileName, m]));
+
   // Generate file manifest for change detection
-  const fileManifest = designFiles.map(file => {
+  const fileManifest = designFiles.map((file) => {
     const fileMetadata = metadataMap.get(file);
-    const designIterationsDir = path.join(superdesignDir, 'design_iterations');
+    const designIterationsDir = path.join(superdesignDir, "design_iterations");
     const filePath = path.join(designIterationsDir, file);
     const stats = existsSync(filePath) ? statSync(filePath) : null;
-    
+
     return {
       name: file,
       size: stats?.size || 0,
       modified: stats?.mtime.getTime() || 0,
-      created: fileMetadata?.createdAt || stats?.birthtime.toISOString() || new Date().toISOString()
+      created:
+        fileMetadata?.createdAt ||
+        stats?.birthtime.toISOString() ||
+        new Date().toISOString(),
     };
   });
-  
-  const designCards = designFiles.map((file, index) => {
-    const fileExtension = path.extname(file).toLowerCase();
-    const fileName = path.basename(file, fileExtension);
-    const relativePath = `./design_iterations/${file}`;
-    const fileMetadata = metadataMap.get(file);
-    const manifest = fileManifest.find(f => f.name === file);
-    
-    let previewContent = '';
-    if (fileExtension === '.html') {
-      previewContent = `<iframe src="${relativePath}" loading="lazy" data-file="${file}"></iframe>`;
-    } else if (fileExtension === '.svg') {
-      previewContent = `<object data="${relativePath}" type="image/svg+xml" class="svg-preview" data-file="${file}"></object>`;
-    }
-    
-    // Format file size
-    const formatFileSize = (bytes: number): string => {
-      if (bytes < 1024) return `${bytes} B`;
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    };
-    
-    // Format date
-    const formatDate = (dateString: string): string => {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-    };
-    
-    return `
-      <div class="design-card" data-file="${file}" data-created="${fileMetadata?.createdAt || ''}" data-modified="${manifest?.modified || 0}">
+
+  const designCards = designFiles
+    .map((file, index) => {
+      const fileExtension = path.extname(file).toLowerCase();
+      const fileName = path.basename(file, fileExtension);
+      const relativePath = `./design_iterations/${file}`;
+      const fileMetadata = metadataMap.get(file);
+      const manifest = fileManifest.find((f) => f.name === file);
+
+      let previewContent = "";
+      if (fileExtension === ".html") {
+        previewContent = `<iframe src="${relativePath}" loading="lazy" data-file="${file}"></iframe>`;
+      } else if (fileExtension === ".svg") {
+        previewContent = `<object data="${relativePath}" type="image/svg+xml" class="svg-preview" data-file="${file}"></object>`;
+      }
+
+      // Format file size
+      const formatFileSize = (bytes: number): string => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      };
+
+      // Format date
+      const formatDate = (dateString: string): string => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      };
+
+      return `
+      <div class="design-card" data-file="${file}" data-created="${
+        fileMetadata?.createdAt || ""
+      }" data-modified="${manifest?.modified || 0}">
         <div class="design-header">
           <div class="design-title">
             <h3>${fileName}</h3>
             <span class="design-type">${fileExtension.toUpperCase()}</span>
           </div>
           <div class="design-meta">
-            ${fileMetadata ? `
-              <span class="design-size">${formatFileSize(fileMetadata.fileSize)}</span>
-              <span class="design-date">${formatDate(fileMetadata.createdAt)}</span>
-            ` : manifest ? `
+            ${
+              fileMetadata
+                ? `
+              <span class="design-size">${formatFileSize(
+                fileMetadata.fileSize
+              )}</span>
+              <span class="design-date">${formatDate(
+                fileMetadata.createdAt
+              )}</span>
+            `
+                : manifest
+                ? `
               <span class="design-size">${formatFileSize(manifest.size)}</span>
               <span class="design-date">${formatDate(manifest.created)}</span>
-            ` : ''}
+            `
+                : ""
+            }
           </div>
         </div>
         <div class="design-preview">
@@ -1244,7 +1434,8 @@ function generateGalleryHTML(designFiles: string[], superdesignDir: string): str
         </div>
       </div>
     `;
-  }).join('');
+    })
+    .join("");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1931,59 +2122,75 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "superdesign_generate",
-        description: "Returns design specifications for Claude Code to generate UI designs, wireframes, components, logos, or icons",
+        description:
+          "Returns design specifications for Claude Code to generate UI designs, wireframes, components, logos, or icons",
         inputSchema: {
           type: "object",
           properties: {
-            prompt: { type: "string", description: "Design prompt describing what to create" },
-            design_type: { 
-              type: "string", 
-              enum: ["ui", "wireframe", "component", "logo", "icon"],
-              description: "Type of design to generate" 
+            prompt: {
+              type: "string",
+              description: "Design prompt describing what to create",
             },
-            variations: { 
-              type: "number", 
-              minimum: 1, 
-              maximum: 5, 
+            design_type: {
+              type: "string",
+              enum: ["ui", "wireframe", "component", "logo", "icon"],
+              description: "Type of design to generate",
+            },
+            variations: {
+              type: "number",
+              minimum: 1,
+              maximum: 5,
               default: 3,
-              description: "Number of design variations to create" 
+              description: "Number of design variations to create",
             },
             framework: {
               type: "string",
               enum: ["html", "react", "vue"],
               default: "html",
-              description: "Framework for UI components"
-            }
+              description: "Framework for UI components",
+            },
           },
           required: ["prompt", "design_type"],
         },
       },
       {
         name: "superdesign_iterate",
-        description: "Returns iteration instructions based on existing design and feedback",
+        description:
+          "Returns iteration instructions based on existing design and feedback",
         inputSchema: {
           type: "object",
           properties: {
-            design_file: { type: "string", description: "Path to existing design file to iterate on" },
-            feedback: { type: "string", description: "Feedback for improving the design" },
-            variations: { 
-              type: "number", 
-              minimum: 1, 
-              maximum: 5, 
+            design_file: {
+              type: "string",
+              description: "Path to existing design file to iterate on",
+            },
+            feedback: {
+              type: "string",
+              description: "Feedback for improving the design",
+            },
+            variations: {
+              type: "number",
+              minimum: 1,
+              maximum: 5,
               default: 3,
-              description: "Number of design variations to create" 
-            }
+              description: "Number of design variations to create",
+            },
           },
           required: ["design_file", "feedback"],
         },
       },
       {
         name: "superdesign_extract_system",
-        description: "Returns instructions for extracting design system from screenshot or image",
+        description:
+          "Returns instructions for extracting design system from screenshot or image",
         inputSchema: {
           type: "object",
           properties: {
-            image_path: { type: "string", description: "Path to screenshot/image to extract design system from" }
+            image_path: {
+              type: "string",
+              description:
+                "Path to screenshot/image to extract design system from",
+            },
           },
           required: ["image_path"],
         },
@@ -1994,17 +2201,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
-            workspace_path: { type: "string", description: "Workspace path (defaults to current directory)" }
+            workspace_path: {
+              type: "string",
+              description: "Workspace path (defaults to current directory)",
+            },
           },
         },
       },
       {
         name: "superdesign_gallery",
-        description: "Generate an HTML gallery to view all designs in a browser",
+        description:
+          "Generate an HTML gallery to view all designs in a browser",
         inputSchema: {
           type: "object",
           properties: {
-            workspace_path: { type: "string", description: "Workspace path (defaults to current directory)" }
+            workspace_path: {
+              type: "string",
+              description: "Workspace path (defaults to current directory)",
+            },
           },
         },
       },
@@ -2014,8 +2228,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
-            filename: { type: "string", description: "Name of the design file to delete" },
-            workspace_path: { type: "string", description: "Workspace path (defaults to current directory)" }
+            filename: {
+              type: "string",
+              description: "Name of the design file to delete",
+            },
+            workspace_path: {
+              type: "string",
+              description: "Workspace path (defaults to current directory)",
+            },
           },
           required: ["filename"],
         },
@@ -2026,31 +2246,55 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
-            workspace_path: { type: "string", description: "Workspace path (defaults to current directory)" },
-            max_age_days: { type: "number", description: "Delete designs older than X days (default: 30)" },
-            max_count: { type: "number", description: "Keep only the latest X designs (default: 50)" },
-            dry_run: { type: "boolean", description: "Show what would be deleted without actually deleting" }
+            workspace_path: {
+              type: "string",
+              description: "Workspace path (defaults to current directory)",
+            },
+            max_age_days: {
+              type: "number",
+              description: `Delete designs older than X days (default: ${appConfig.defaultCleanupDays})`,
+            },
+            max_count: {
+              type: "number",
+              description: `Keep only the latest X designs (default: ${appConfig.defaultCleanupCount})`,
+            },
+            dry_run: {
+              type: "boolean",
+              description:
+                "Show what would be deleted without actually deleting",
+            },
           },
         },
       },
       {
         name: "superdesign_live_gallery",
-        description: "Start a live gallery server with real-time updates and file watching",
+        description:
+          "Start a live gallery server with real-time updates and file watching",
         inputSchema: {
           type: "object",
           properties: {
-            workspace_path: { type: "string", description: "Workspace path (defaults to current directory)" },
-            port: { type: "number", description: "Port for the live gallery server (default: 3000)" }
+            workspace_path: {
+              type: "string",
+              description: "Workspace path (defaults to current directory)",
+            },
+            port: {
+              type: "number",
+              description: `Port for the live gallery server (default: ${appConfig.liveGalleryPort})`,
+            },
           },
         },
       },
       {
         name: "superdesign_check_files",
-        description: "Check for file changes by comparing current files with a manifest (for gallery refresh integration)",
+        description:
+          "Check for file changes by comparing current files with a manifest (for gallery refresh integration)",
         inputSchema: {
           type: "object",
           properties: {
-            workspace_path: { type: "string", description: "Workspace path (defaults to current directory)" },
+            workspace_path: {
+              type: "string",
+              description: "Workspace path (defaults to current directory)",
+            },
             manifest: {
               type: "array",
               items: {
@@ -2058,12 +2302,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 properties: {
                   name: { type: "string" },
                   size: { type: "number" },
-                  modified: { type: "number" }
+                  modified: { type: "number" },
                 },
-                required: ["name", "size", "modified"]
+                required: ["name", "size", "modified"],
               },
-              description: "File manifest to compare against"
-            }
+              description: "File manifest to compare against",
+            },
           },
           required: ["manifest"],
         },
@@ -2079,19 +2323,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case "superdesign_generate": {
-        const { prompt, design_type, variations, framework } = GenerateDesignSchema.parse(args);
-        
+        const { prompt, design_type, variations, framework } =
+          GenerateDesignSchema.parse(args);
+
         const superdesignDir = getSuperdeignDirectory();
-        const designIterationsDir = path.join(superdesignDir, 'design_iterations');
+        const designIterationsDir = path.join(
+          superdesignDir,
+          "design_iterations"
+        );
         const baseName = generateBaseName(prompt);
-        const extension = (design_type === 'logo' || design_type === 'icon') ? 'svg' : 'html';
-        
+        const extension =
+          design_type === "logo" || design_type === "icon" ? "svg" : "html";
+
         // Create file list for variations
         const fileList = [];
         for (let i = 1; i <= variations; i++) {
           fileList.push(`${baseName}_${i}.${extension}`);
         }
-        
+
         // Build design specifications
         let specifications = `DESIGN SPECIFICATION FOR CLAUDE CODE:
 
@@ -2105,13 +2354,31 @@ IMPORTANT: You must generate and save the following design files based on these 
 - File format: ${extension.toUpperCase()}
 
 === FILES TO CREATE ===
-${fileList.map((file, index) => `${index + 1}. ${path.join(designIterationsDir, file)}`).join('\n')}
+${fileList
+  .map((file, index) => `${index + 1}. ${path.join(designIterationsDir, file)}`)
+  .join("\n")}
 
 === DESIGN GUIDELINES ===
-${design_type === 'wireframe' ? '- Create minimal black and white wireframes with no colors\n- Use simple line styles like Balsamiq\n- No annotations or decorative elements' : ''}
-${design_type === 'component' ? `- Generate a single ${framework} component with mock data\n- Focus only on the component itself\n- Include proper component structure for ${framework}` : ''}
-${design_type === 'logo' || design_type === 'icon' ? '- Create proper SVG code with vector graphics\n- Ensure SVG is valid and well-structured\n- Focus on clean, scalable design' : ''}
-${design_type === 'ui' ? '- Create complete responsive HTML interface\n- Use Tailwind CSS via CDN\n- Follow all UI design guidelines below' : ''}
+${
+  design_type === "wireframe"
+    ? "- Create minimal black and white wireframes with no colors\n- Use simple line styles like Balsamiq\n- No annotations or decorative elements"
+    : ""
+}
+${
+  design_type === "component"
+    ? `- Generate a single ${framework} component with mock data\n- Focus only on the component itself\n- Include proper component structure for ${framework}`
+    : ""
+}
+${
+  design_type === "logo" || design_type === "icon"
+    ? "- Create proper SVG code with vector graphics\n- Ensure SVG is valid and well-structured\n- Focus on clean, scalable design"
+    : ""
+}
+${
+  design_type === "ui"
+    ? "- Create complete responsive HTML interface\n- Use Tailwind CSS via CDN\n- Follow all UI design guidelines below"
+    : ""
+}
 
 === SUPERDESIGN SYSTEM PROMPT ===
 ${SUPERDESIGN_SYSTEM_PROMPT}
@@ -2138,27 +2405,36 @@ Please proceed to create these ${variations} design files now, then automaticall
       }
 
       case "superdesign_iterate": {
-        const { design_file, feedback, variations } = IterateDesignSchema.parse(args);
-        
+        const { design_file, feedback, variations } =
+          IterateDesignSchema.parse(args);
+
         if (!existsSync(design_file)) {
           return {
-            content: [{ type: "text", text: `Error: Design file ${design_file} does not exist` }],
+            content: [
+              {
+                type: "text",
+                text: `Error: Design file ${design_file} does not exist`,
+              },
+            ],
           };
         }
 
-        const originalContent = readFileSync(design_file, 'utf8');
+        const originalContent = readFileSync(design_file, "utf8");
         const superdesignDir = getSuperdeignDirectory();
-        const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-        
+        const designIterationsDir = path.join(
+          superdesignDir,
+          "design_iterations"
+        );
+
         const baseName = path.basename(design_file, path.extname(design_file));
         const extension = path.extname(design_file).substring(1);
-        
+
         // Create file list for iterations
         const fileList = [];
         for (let i = 1; i <= variations; i++) {
           fileList.push(`${baseName}_${i}.${extension}`);
         }
-        
+
         let specifications = `DESIGN ITERATION SPECIFICATION FOR CLAUDE CODE:
 
 IMPORTANT: You must iterate on the existing design and save the improved versions.
@@ -2170,7 +2446,9 @@ IMPORTANT: You must iterate on the existing design and save the improved version
 - File format: ${extension.toUpperCase()}
 
 === FILES TO CREATE ===
-${fileList.map((file, index) => `${index + 1}. ${path.join(designIterationsDir, file)}`).join('\n')}
+${fileList
+  .map((file, index) => `${index + 1}. ${path.join(designIterationsDir, file)}`)
+  .join("\n")}
 
 === ORIGINAL DESIGN ===
 ${originalContent}
@@ -2201,16 +2479,21 @@ Please proceed to create these ${variations} improved design files now.`;
 
       case "superdesign_extract_system": {
         const { image_path } = ExtractDesignSystemSchema.parse(args);
-        
+
         if (!existsSync(image_path)) {
           return {
-            content: [{ type: "text", text: `Error: Image file ${image_path} does not exist` }],
+            content: [
+              {
+                type: "text",
+                text: `Error: Image file ${image_path} does not exist`,
+              },
+            ],
           };
         }
 
         const superdesignDir = getSuperdeignDirectory();
-        const designSystemDir = path.join(superdesignDir, 'design_system');
-        
+        const designSystemDir = path.join(superdesignDir, "design_system");
+
         let specifications = `DESIGN SYSTEM EXTRACTION SPECIFICATION FOR CLAUDE CODE:
 
 IMPORTANT: You must analyze the image and extract a design system JSON file.
@@ -2266,20 +2549,25 @@ Please proceed to analyze the image and create the design system JSON file now.`
 
       case "superdesign_list": {
         const { workspace_path } = ListDesignsSchema.parse(args);
-        
+
         try {
           const superdesignDir = getSuperdeignDirectory(workspace_path);
-          const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-          const designSystemDir = path.join(superdesignDir, 'design_system');
+          const designIterationsDir = path.join(
+            superdesignDir,
+            "design_iterations"
+          );
+          const designSystemDir = path.join(superdesignDir, "design_system");
 
-          const designFiles = await glob('*.{html,svg}', { cwd: designIterationsDir });
-          const systemFiles = await glob('*.json', { cwd: designSystemDir });
+          const designFiles = await glob("*.{html,svg}", {
+            cwd: designIterationsDir,
+          });
+          const systemFiles = await glob("*.json", { cwd: designSystemDir });
 
           let result = `Superdesign workspace: ${superdesignDir}\n\n`;
-          
+
           if (designFiles.length > 0) {
             result += `Design iterations (${designFiles.length}):\n`;
-            designFiles.forEach(file => {
+            designFiles.forEach((file) => {
               result += `  - ${file}\n`;
             });
           } else {
@@ -2290,7 +2578,7 @@ Please proceed to analyze the image and create the design system JSON file now.`
 
           if (systemFiles.length > 0) {
             result += `Design systems (${systemFiles.length}):\n`;
-            systemFiles.forEach(file => {
+            systemFiles.forEach((file) => {
               result += `  - ${file}\n`;
             });
           } else {
@@ -2302,37 +2590,54 @@ Please proceed to analyze the image and create the design system JSON file now.`
           };
         } catch (error: any) {
           return {
-            content: [{ type: "text", text: `Error listing designs: ${error.message}` }],
+            content: [
+              { type: "text", text: `Error listing designs: ${error.message}` },
+            ],
           };
         }
       }
 
       case "superdesign_gallery": {
         const { workspace_path } = GallerySchema.parse(args);
-        
+
         try {
           const superdesignDir = getSuperdeignDirectory(workspace_path);
-          const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-          
+          const designIterationsDir = path.join(
+            superdesignDir,
+            "design_iterations"
+          );
+
           if (!existsSync(designIterationsDir)) {
             return {
-              content: [{ type: "text", text: "No design iterations found. Generate some designs first using superdesign_generate." }],
+              content: [
+                {
+                  type: "text",
+                  text: "No design iterations found. Generate some designs first using superdesign_generate.",
+                },
+              ],
             };
           }
 
-          const designFiles = await glob('*.{html,svg}', { cwd: designIterationsDir });
-          
+          const designFiles = await glob("*.{html,svg}", {
+            cwd: designIterationsDir,
+          });
+
           if (designFiles.length === 0) {
             return {
-              content: [{ type: "text", text: "No design files found in design_iterations directory." }],
+              content: [
+                {
+                  type: "text",
+                  text: "No design files found in design_iterations directory.",
+                },
+              ],
             };
           }
 
-          const galleryPath = path.join(superdesignDir, 'gallery.html');
-          
+          const galleryPath = path.join(superdesignDir, "gallery.html");
+
           // Generate gallery HTML
           const galleryHtml = generateGalleryHTML(designFiles, superdesignDir);
-          
+
           let specifications = `GALLERY GENERATION SPECIFICATION FOR CLAUDE CODE:
 
 IMPORTANT: You must create a gallery HTML file to view all designs in a browser.
@@ -2343,7 +2648,7 @@ IMPORTANT: You must create a gallery HTML file to view all designs in a browser.
 - Directory: ${designIterationsDir}
 
 === FILES TO DISPLAY ===
-${designFiles.map((file, index) => `${index + 1}. ${file}`).join('\n')}
+${designFiles.map((file, index) => `${index + 1}. ${file}`).join("\n")}
 
 === GALLERY HTML CONTENT ===
 ${galleryHtml}
@@ -2362,116 +2667,160 @@ Please proceed to create the gallery file and **automatically open it in the bro
           };
         } catch (error: any) {
           return {
-            content: [{ type: "text", text: `Error generating gallery: ${error.message}` }],
+            content: [
+              {
+                type: "text",
+                text: `Error generating gallery: ${error.message}`,
+              },
+            ],
           };
         }
       }
 
       case "superdesign_delete": {
         const { filename, workspace_path } = DeleteDesignSchema.parse(args);
-        
+
         try {
           const superdesignDir = getSuperdeignDirectory(workspace_path);
-          const designIterationsDir = path.join(superdesignDir, 'design_iterations');
+          const designIterationsDir = path.join(
+            superdesignDir,
+            "design_iterations"
+          );
           const filePath = path.join(designIterationsDir, filename);
-          
+
           if (!existsSync(filePath)) {
             return {
-              content: [{ type: "text", text: `Error: Design file ${filename} does not exist` }],
+              content: [
+                {
+                  type: "text",
+                  text: `Error: Design file ${filename} does not exist`,
+                },
+              ],
             };
           }
-          
+
           // Delete the file
           unlinkSync(filePath);
-          
+
           // Update metadata
           const metadata = loadMetadata(superdesignDir);
-          const filteredMetadata = metadata.filter(m => m.fileName !== filename);
+          const filteredMetadata = metadata.filter(
+            (m) => m.fileName !== filename
+          );
           saveMetadata(superdesignDir, filteredMetadata);
-          
+
           return {
-            content: [{ type: "text", text: `Successfully deleted ${filename}` }],
+            content: [
+              { type: "text", text: `Successfully deleted ${filename}` },
+            ],
           };
         } catch (error: any) {
           return {
-            content: [{ type: "text", text: `Error deleting design: ${error.message}` }],
+            content: [
+              { type: "text", text: `Error deleting design: ${error.message}` },
+            ],
           };
         }
       }
 
       case "superdesign_cleanup": {
-        const { workspace_path, max_age_days, max_count, dry_run } = CleanupSchema.parse(args);
-        
+        const { workspace_path, max_age_days, max_count, dry_run } =
+          CleanupSchema.parse(args);
+
         try {
           const superdesignDir = getSuperdeignDirectory(workspace_path);
-          const result = performCleanup(superdesignDir, max_age_days, max_count, dry_run || false);
-          
+          const result = performCleanup(
+            superdesignDir,
+            max_age_days,
+            max_count,
+            dry_run || false
+          );
+
           let response = `CLEANUP RESULTS:\n\n`;
-          
+
           if (dry_run) {
             response += `DRY RUN - No files were actually deleted\n\n`;
           }
-          
+
           if (result.deleted.length > 0) {
-            response += `Files ${dry_run ? 'to be deleted' : 'deleted'} (${result.deleted.length}):\n`;
-            result.deleted.forEach(file => {
+            response += `Files ${dry_run ? "to be deleted" : "deleted"} (${
+              result.deleted.length
+            }):\n`;
+            result.deleted.forEach((file) => {
               response += `  - ${file}\n`;
             });
             response += `\n`;
           }
-          
+
           if (result.kept.length > 0) {
             response += `Files kept (${result.kept.length}):\n`;
-            result.kept.forEach(file => {
+            result.kept.forEach((file) => {
               response += `  - ${file}\n`;
             });
             response += `\n`;
           }
-          
+
           if (result.errors.length > 0) {
             response += `Errors (${result.errors.length}):\n`;
-            result.errors.forEach(error => {
+            result.errors.forEach((error) => {
               response += `  - ${error}\n`;
             });
             response += `\n`;
           }
-          
+
           if (result.deleted.length === 0 && result.errors.length === 0) {
             response += `No files needed cleanup.\n`;
           }
-          
+
           const settings = getCleanupSettings(superdesignDir);
           response += `\nCleanup settings:\n`;
-          response += `  - Max age: ${max_age_days || settings.maxAgeDays} days\n`;
-          response += `  - Max count: ${max_count || settings.maxCount} files\n`;
+          response += `  - Max age: ${
+            max_age_days || settings.maxAgeDays
+          } days\n`;
+          response += `  - Max count: ${
+            max_count || settings.maxCount
+          } files\n`;
           response += `  - Enabled: ${settings.enabled}\n`;
-          
+
           return {
             content: [{ type: "text", text: response }],
           };
         } catch (error: any) {
           return {
-            content: [{ type: "text", text: `Error during cleanup: ${error.message}` }],
+            content: [
+              { type: "text", text: `Error during cleanup: ${error.message}` },
+            ],
           };
         }
       }
 
       case "superdesign_live_gallery": {
         const { workspace_path, port } = LiveGallerySchema.parse(args);
-        
+
         try {
           const superdesignDir = getSuperdeignDirectory(workspace_path);
-          const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-          
+          const designIterationsDir = path.join(
+            superdesignDir,
+            "design_iterations"
+          );
+
           if (!existsSync(designIterationsDir)) {
             return {
-              content: [{ type: "text", text: "No design iterations found. Generate some designs first using superdesign_generate." }],
+              content: [
+                {
+                  type: "text",
+                  text: "No design iterations found. Generate some designs first using superdesign_generate.",
+                },
+              ],
             };
           }
-          
-          const serverPort = port || 3000;
-          const serverUrl = await createLiveGalleryServer(superdesignDir, serverPort);
-          
+
+          const serverPort = port || appConfig.liveGalleryPort;
+          const serverUrl = await createLiveGalleryServer(
+            superdesignDir,
+            serverPort
+          );
+
           let response = `LIVE GALLERY SERVER STARTED:
 
 🌐 Server URL: ${serverUrl}
@@ -2502,38 +2851,64 @@ The gallery will automatically detect:
 Keep this server running to maintain live updates. The gallery will reconnect automatically if the connection is lost.
 
 Server is now running at: ${serverUrl}`;
-          
+
           return {
             content: [{ type: "text", text: response }],
           };
         } catch (error: any) {
           return {
-            content: [{ type: "text", text: `Error starting live gallery server: ${error.message}` }],
+            content: [
+              {
+                type: "text",
+                text: `Error starting live gallery server: ${error.message}`,
+              },
+            ],
           };
         }
       }
 
       case "superdesign_check_files": {
         const { workspace_path, manifest } = CheckFilesSchema.parse(args);
-        
+
         try {
           const superdesignDir = getSuperdeignDirectory(workspace_path);
-          const designIterationsDir = path.join(superdesignDir, 'design_iterations');
-          
+          const designIterationsDir = path.join(
+            superdesignDir,
+            "design_iterations"
+          );
+
           if (!existsSync(designIterationsDir)) {
             return {
-              content: [{ type: "text", text: JSON.stringify({ hasChanges: false, changes: [], error: "No design iterations directory found" }) }],
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    hasChanges: false,
+                    changes: [],
+                    error: "No design iterations directory found",
+                  }),
+                },
+              ],
             };
           }
-          
+
           const result = checkFileChanges(superdesignDir, manifest);
-          
+
           return {
             content: [{ type: "text", text: JSON.stringify(result) }],
           };
         } catch (error: any) {
           return {
-            content: [{ type: "text", text: JSON.stringify({ hasChanges: false, changes: [], error: error.message }) }],
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  hasChanges: false,
+                  changes: [],
+                  error: error.message,
+                }),
+              },
+            ],
           };
         }
       }
@@ -2545,7 +2920,9 @@ Server is now running at: ${serverUrl}`;
     }
   } catch (error: any) {
     return {
-      content: [{ type: "text", text: `Error parsing arguments: ${error.message}` }],
+      content: [
+        { type: "text", text: `Error parsing arguments: ${error.message}` },
+      ],
     };
   }
 });
